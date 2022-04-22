@@ -1,0 +1,3 @@
+name: fanqiang-pulumi
+runtime: nodejs
+description: Fanqiang infrastructure auto deployment

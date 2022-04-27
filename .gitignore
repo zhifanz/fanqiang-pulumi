@@ -131,3 +131,7 @@ dist
 
 # IDE
 .vscode/
+
+# pulumi
+pulumi.*.yaml
+pulumi.*.yaml.*

@@ -3,5 +3,5 @@
   "extension": "ts",
   "recursive": true,
   "require": "ts-node/register",
-  "timeout": 60000
+  "timeout": 0
 }

@@ -1,72 +1,32 @@
-import {
-  InlineProgramArgs,
-  LocalWorkspace,
-  PulumiFn,
-  Stack,
-  UpResult,
-} from "@pulumi/pulumi/automation";
-import project from "../package.json";
-import { apply } from "../lib/proxy";
+import * as common from "../lib/common";
+import * as proxy from "../lib/proxy";
 import * as aws from "@pulumi/aws";
 import { assert } from "chai";
-import { SocketAddress, connect } from "net";
+import { connect } from "net";
 import promiseRetry from "promise-retry";
+import { applyProgram } from "./helper";
 
 describe("proxy", () => {
-  let stack: Stack;
-
-  afterEach(async () => {
-    if (stack) {
-      await stack.destroy({ onOutput: console.log });
-      await stack.workspace.removeStack(stack.name);
-    }
-  });
-
-  async function applyProgram(
-    program: PulumiFn,
-    region: string
-  ): Promise<UpResult> {
-    const stackArgs: InlineProgramArgs = {
-      stackName: "test",
-      projectName: project.name,
-      program,
-    };
-    stack = await LocalWorkspace.createOrSelectStack(stackArgs);
-    await stack.setConfig("aws:region", { value: region });
-    await stack.workspace.installPlugin("aws", "v5.2.0");
-    return stack.up({
-      onOutput: console.log,
-      onEvent: (event) => {
-        if (event.diagnosticEvent?.severity == "error") {
-          throw new Error(event.diagnosticEvent.message);
-        }
-      },
-    });
-  }
-
   describe("aws", () => {
     it("getRegion without parameter", async () => {
       const result = await applyProgram(
-        async () => ({
-          region: (await aws.getRegion()).name,
-        }),
+        async () => ({ region: (await aws.getRegion()).name }),
         "us-west-2"
       );
       assert.equal(result.outputs["region"].value, "us-west-2");
     });
   });
 
-  describe("lightsail", () => {
+  describe("shadowsocks", () => {
     it("checking proxy port open", async () => {
-      const result = await applyProgram(
-        () =>
-          apply("fanqiang-dev", {
-            encryption_algorithm: "aes-256-gcm",
-            port: 8388,
-            password: "foo",
-          }),
-        "us-east-1"
-      );
+      const result = await applyProgram(() => {
+        const bucket = common.apply("fanqiang-dev").bucket;
+        return proxy.apply(bucket, {
+          encryption: "aes-256-gcm",
+          port: 8388,
+          password: "foo",
+        });
+      });
       const ip = result.outputs["publicIpAddress"].value;
 
       await promiseRetry(

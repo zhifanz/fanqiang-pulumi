@@ -3,18 +3,16 @@ import * as pulumi from "@pulumi/pulumi";
 import { readFile } from "fs/promises";
 import _ from "lodash";
 
+export type ShadowsocksConfiguration = {
+  password: string;
+  port: number;
+  encryption: string;
+};
+
 export async function apply(
-  bucketName: string,
-  shadowsocksConfig: {
-    password: string;
-    port: number;
-    encryption_algorithm: string;
-  }
+  bucket: aws.s3.Bucket,
+  shadowsocksConfig: ShadowsocksConfiguration
 ): Promise<{ publicIpAddress: pulumi.Output<string> }> {
-  const bucket = new aws.s3.Bucket("default", {
-    forceDestroy: true,
-    bucket: bucketName,
-  });
   const artifactsPath = "proxy";
   new aws.s3.BucketObject("shadowsocksConfig", {
     bucket: bucket.id,
@@ -24,7 +22,7 @@ export async function apply(
       server: "::",
       server_port: shadowsocksConfig.port,
       password: shadowsocksConfig.password,
-      method: shadowsocksConfig.encryption_algorithm,
+      method: shadowsocksConfig.encryption,
     }),
   });
   new aws.s3.BucketObject("shadowsocksDockerCompose", {
@@ -57,8 +55,8 @@ export async function apply(
     "utf8"
   );
   const userData: pulumi.Output<any> = pulumi
-    .all([accessKey.id, accessKey.secret])
-    .apply(([id, secret]) => {
+    .all([accessKey.id, accessKey.secret, bucket.bucket])
+    .apply(([id, secret, bucketName]) => {
       return _.template(userDataTemplate)({
         accessKeyId: id,
         accessKeySecret: secret,

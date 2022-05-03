@@ -1,17 +1,12 @@
 import * as aws from "@pulumi/aws";
 import * as pulumi from "@pulumi/pulumi";
 import { readFile } from "fs/promises";
-import _ from "lodash";
-
-export type ShadowsocksConfiguration = {
-  password: string;
-  port: number;
-  encryption: string;
-};
+import * as _ from "lodash";
+import * as domain from "./domain";
 
 export async function apply(
   bucket: aws.s3.Bucket,
-  shadowsocksConfig: ShadowsocksConfiguration
+  shadowsocksConfig: domain.ShadowsocksConfiguration
 ): Promise<{ publicIpAddress: pulumi.Output<string> }> {
   const artifactsPath = "proxy";
   new aws.s3.BucketObject("shadowsocksConfig", {

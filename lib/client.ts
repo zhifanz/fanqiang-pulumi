@@ -1,17 +1,14 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
-import { ShadowsocksConfiguration } from "./proxy";
 import { readFile } from "fs/promises";
-import _ from "lodash";
+import * as _ from "lodash";
+import * as domain from "./domain";
 
 export type ApplyResult = { clashConfigUrl: pulumi.Output<string> };
-type ShadowsocksServerConfiguration = ShadowsocksConfiguration & {
-  host: string;
-};
 
 export async function apply(
   bucket: aws.s3.Bucket,
-  shadowsocksConfig: pulumi.Input<ShadowsocksServerConfiguration>
+  shadowsocksConfig: pulumi.Input<domain.ShadowsocksServerConfiguration>
 ): Promise<ApplyResult> {
   const templateFunc = await loadTemplate();
   const obj = new aws.s3.BucketObject("clashConfiguration", {

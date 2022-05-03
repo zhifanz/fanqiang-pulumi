@@ -3,6 +3,7 @@ import * as pulumi from "@pulumi/pulumi";
 import { readFile } from "fs/promises";
 import * as _ from "lodash";
 import * as domain from "./domain";
+import defaultResource from "./resourceUtils";
 
 export async function apply(
   bucket: aws.s3.Bucket,
@@ -26,8 +27,10 @@ export async function apply(
     forceDestroy: true,
     source: new pulumi.asset.FileAsset(__dirname + "/docker-compose.yml"),
   });
-  const agentUser = new aws.iam.User("defaultAgent", { forceDestroy: true });
-  new aws.iam.UserPolicy("defaultAgent", {
+  const agentUser: aws.iam.User = defaultResource(aws.iam.User, {
+    forceDestroy: true,
+  });
+  defaultResource(aws.iam.UserPolicy, {
     user: agentUser.name,
     policy: bucket.arn.apply((arn) =>
       JSON.stringify({
@@ -42,7 +45,7 @@ export async function apply(
       })
     ),
   });
-  const accessKey = new aws.iam.AccessKey("defaultAgent", {
+  const accessKey: aws.iam.AccessKey = defaultResource(aws.iam.AccessKey, {
     user: agentUser.name,
   });
   const userDataTemplate = await readFile(
@@ -59,13 +62,16 @@ export async function apply(
       });
     });
 
-  const instance = new aws.lightsail.Instance("default", {
-    availabilityZone: `${(await aws.getRegion()).name}a`,
-    blueprintId: "amazon_linux_2",
-    bundleId: "nano_2_0",
-    userData,
-  });
-  new aws.lightsail.InstancePublicPorts("default", {
+  const instance: aws.lightsail.Instance = defaultResource(
+    aws.lightsail.Instance,
+    {
+      availabilityZone: `${(await aws.getRegion()).name}a`,
+      blueprintId: "amazon_linux_2",
+      bundleId: "nano_2_0",
+      userData,
+    }
+  );
+  defaultResource(aws.lightsail.InstancePublicPorts, {
     instanceName: instance.name,
     portInfos: [
       {

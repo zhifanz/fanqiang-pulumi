@@ -1,11 +1,9 @@
 import * as domain from "./domain";
-import * as common from "./common";
-import * as proxy from "./proxy";
-import * as aws from "@pulumi/aws";
+import defaultResource from "./resourceUtils";
 import * as pulumi from "@pulumi/pulumi";
 import * as alicloud from "@pulumi/alicloud";
 import { readFile } from "fs/promises";
-import _ = require("lodash");
+import _ from "lodash";
 
 export async function apply(
   shadowsocksConfig: pulumi.Input<
@@ -17,7 +15,7 @@ export async function apply(
   const shadowsocksConfigOutput = pulumi.output(shadowsocksConfig);
   const zoneCandidates = await alicloud.getZones();
 
-  const vpc = new alicloud.vpc.Network("default", {
+  const vpc = defaultResource(alicloud.vpc.Network, {
     cidrBlock: "192.168.0.0/16",
   });
 
@@ -29,30 +27,25 @@ export async function apply(
         zoneId,
       })
   );
-  const securityGroup = new alicloud.ecs.SecurityGroup("default", {
+  const securityGroup = defaultResource(alicloud.ecs.SecurityGroup, {
     vpcId: vpc.id,
   });
-  new alicloud.ecs.SecurityGroupRule("default", {
-    securityGroupId: securityGroup.id,
-    ipProtocol: "tcp",
-    type: "ingress",
-    cidrIp: "0.0.0.0/0",
-    portRange: shadowsocksConfigOutput.apply((e) => `${e.port}/${e.port}`),
-  });
+  createIngressRule(
+    "default",
+    shadowsocksConfigOutput.apply((e) => `${e.port}/${e.port}`),
+    securityGroup.id
+  );
   if (tunnelConfig.publicKey) {
-    new alicloud.ecs.SecurityGroupRule("ssh", {
-      securityGroupId: securityGroup.id,
-      ipProtocol: "tcp",
-      type: "ingress",
-      cidrIp: "0.0.0.0/0",
-      portRange: "22/22",
-    });
+    createIngressRule("ssh", "22/22", securityGroup.id);
   }
-  const elasticIp = new alicloud.ecs.EipAddress("default", {
-    bandwidth: tunnelConfig.bandwidth,
-    internetChargeType: "PayByTraffic",
-  });
-  const ramRole = new alicloud.ram.Role("default", {
+  const elasticIp: alicloud.ecs.EipAddress = defaultResource(
+    alicloud.ecs.EipAddress,
+    {
+      bandwidth: tunnelConfig.bandwidth,
+      internetChargeType: "PayByTraffic",
+    }
+  );
+  const ramRole = defaultResource(alicloud.ram.Role, {
     document: JSON.stringify({
       Statement: [
         {
@@ -66,12 +59,12 @@ export async function apply(
       Version: "1",
     }),
   });
-  new alicloud.ram.RolePolicyAttachment("default", {
+  defaultResource(alicloud.ram.RolePolicyAttachment, {
     policyName: "AliyunEIPFullAccess",
     policyType: "System",
     roleName: ramRole.id,
   });
-  const launchTemplate = new alicloud.ecs.LaunchTemplate("default", {
+  const launchTemplate = defaultResource(alicloud.ecs.LaunchTemplate, {
     launchTemplateName: "FanqiangTunnelTemplate",
     imageId: "aliyun_2_1903_x64_20G_alibase_20210726.vhd",
     instanceChargeType: "PostPaid",
@@ -80,11 +73,11 @@ export async function apply(
     spotDuration: "0",
     spotStrategy: "SpotAsPriceGo",
     ramRoleName: ramRole.id,
-    keyPairName: tunnelConfig.publicKey
-      ? new alicloud.ecs.EcsKeyPair("default", {
-          publicKey: tunnelConfig.publicKey,
-        }).id
-      : undefined,
+    keyPairName:
+      tunnelConfig.publicKey &&
+      new alicloud.ecs.EcsKeyPair("default", {
+        publicKey: tunnelConfig.publicKey,
+      }).id,
     userData: pulumi
       .all([shadowsocksConfigOutput, elasticIp.id])
       .apply(([config, allocationId]) =>
@@ -102,7 +95,7 @@ export async function apply(
       size: 40,
     },
   });
-  new alicloud.ecs.AutoProvisioningGroup("default", {
+  defaultResource(alicloud.ecs.AutoProvisioningGroup, {
     launchTemplateId: launchTemplate.id,
     totalTargetCapacity: "1",
     payAsYouGoTargetCapacity: "0",
@@ -119,6 +112,20 @@ export async function apply(
     })),
   });
   return { publicIpAddress: elasticIp.ipAddress };
+}
+
+function createIngressRule(
+  name: string,
+  portRange: pulumi.Input<string>,
+  securityGroupId: pulumi.Input<string>
+) {
+  new alicloud.ecs.SecurityGroupRule(name, {
+    securityGroupId,
+    ipProtocol: "tcp",
+    type: "ingress",
+    cidrIp: "0.0.0.0/0",
+    portRange,
+  });
 }
 
 export async function loadCloudInitTemplate(): Promise<_.TemplateExecutor> {

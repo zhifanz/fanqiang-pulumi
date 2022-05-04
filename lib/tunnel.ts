@@ -1,42 +1,30 @@
 import * as domain from "./domain";
-import defaultResource from "./resourceUtils";
+import { defaultResource } from "./utils";
 import * as pulumi from "@pulumi/pulumi";
 import * as alicloud from "@pulumi/alicloud";
-import { readFile } from "fs/promises";
 import _ from "lodash";
 
+type Proxy = domain.Input<
+  Pick<domain.ShadowsocksServerConfiguration, "host" | "port">
+>;
+
 export async function apply(
-  shadowsocksConfig: pulumi.Input<
-    Pick<domain.ShadowsocksServerConfiguration, "host" | "port">
-  >,
+  proxy: Proxy,
   tunnelConfig: domain.TunnelConfiguration
 ): Promise<{ publicIpAddress: pulumi.Output<string> }> {
-  const templateFunc = await loadCloudInitTemplate();
-  const shadowsocksConfigOutput = pulumi.output(shadowsocksConfig);
-  const zoneCandidates = await alicloud.getZones();
-
   const vpc = defaultResource(alicloud.vpc.Network, {
     cidrBlock: "192.168.0.0/16",
   });
 
-  const switches = zoneCandidates.ids.map(
-    (zoneId, index) =>
-      new alicloud.vpc.Switch(`default-${index}`, {
-        cidrBlock: `192.168.${index}.0/24`,
-        vpcId: vpc.id,
-        zoneId,
-      })
+  const securityGroup: alicloud.ecs.SecurityGroup = defaultResource(
+    alicloud.ecs.SecurityGroup,
+    {
+      vpcId: vpc.id,
+    }
   );
-  const securityGroup = defaultResource(alicloud.ecs.SecurityGroup, {
-    vpcId: vpc.id,
-  });
-  createIngressRule(
-    "default",
-    shadowsocksConfigOutput.apply((e) => `${e.port}/${e.port}`),
-    securityGroup.id
-  );
+  createIngressRule("default", proxy.port, securityGroup);
   if (tunnelConfig.publicKey) {
-    createIngressRule("ssh", "22/22", securityGroup.id);
+    createIngressRule("ssh", 22, securityGroup);
   }
   const elasticIp: alicloud.ecs.EipAddress = defaultResource(
     alicloud.ecs.EipAddress,
@@ -78,17 +66,9 @@ export async function apply(
       new alicloud.ecs.EcsKeyPair("default", {
         publicKey: tunnelConfig.publicKey,
       }).id,
-    userData: pulumi
-      .all([shadowsocksConfigOutput, elasticIp.id])
-      .apply(([config, allocationId]) =>
-        Buffer.from(
-          templateFunc({
-            allocationId,
-            proxyIp: config.host,
-            port: config.port,
-          })
-        ).toString("base64")
-      ),
+    userData: cloudInitScript(elasticIp, proxy).apply((data) =>
+      Buffer.from(data).toString("base64")
+    ),
     systemDisk: {
       category: "cloud_efficiency",
       deleteWithInstance: true,
@@ -105,31 +85,78 @@ export async function apply(
     spotInstanceInterruptionBehavior: "terminate",
     excessCapacityTerminationPolicy: "termination",
     terminateInstances: true,
-    launchTemplateConfigs: switches.map((s) => ({
-      maxPrice: tunnelConfig.maxPrice,
-      vswitchId: s.id,
-      weightedCapacity: "1",
-    })),
+    launchTemplateConfigs: createlaunchTemplateConfigs(
+      vpc.id,
+      tunnelConfig.maxPrice
+    ),
   });
   return { publicIpAddress: elasticIp.ipAddress };
 }
 
+async function createlaunchTemplateConfigs(
+  vpcId: pulumi.Input<string>,
+  maxPrice: string
+) {
+  const formater = new Intl.NumberFormat(undefined, {
+    minimumIntegerDigits: 2,
+  });
+  return (await alicloud.getZones()).ids.map((zoneId, index) => ({
+    maxPrice,
+    vswitchId: new alicloud.vpc.Switch("default-" + formater.format(index), {
+      cidrBlock: `192.168.${index}.0/24`,
+      vpcId,
+      zoneId,
+    }).id,
+    weightedCapacity: "1",
+  }));
+}
+
 function createIngressRule(
   name: string,
-  portRange: pulumi.Input<string>,
-  securityGroupId: pulumi.Input<string>
+  port: pulumi.Input<number>,
+  sg: alicloud.ecs.SecurityGroup
 ) {
   new alicloud.ecs.SecurityGroupRule(name, {
-    securityGroupId,
+    securityGroupId: sg.id,
     ipProtocol: "tcp",
     type: "ingress",
     cidrIp: "0.0.0.0/0",
-    portRange,
+    portRange: pulumi.concat(port, "/", port),
   });
 }
 
-export async function loadCloudInitTemplate(): Promise<_.TemplateExecutor> {
-  return _.template(
-    await readFile(__dirname + "/tunnel-cloud-init.tpl", "utf8")
-  );
+function cloudInitScript(
+  eip: alicloud.ecs.EipAddress,
+  proxy: Proxy
+): pulumi.Output<string> {
+  return pulumi.interpolate`
+#!/bin/bash
+
+REGION="$(curl --silent http://100.100.100.200/latest/meta-data/region-id)"
+aliyun configure set --region $REGION --mode EcsRamRole \
+  --ram-role-name "$(curl --silent http://100.100.100.200/latest/meta-data/ram/security-credentials/)"
+aliyun --endpoint "vpc-vpc.$REGION.aliyuncs.com" vpc AssociateEipAddress \
+  --AllocationId ${eip.id} \
+  --InstanceId "$(curl --silent http://100.100.100.200/latest/meta-data/instance-id)"
+
+until ping -c1 aliyun.com &>/dev/null ; do sleep 1 ; done
+yum install -y nginx nginx-all-modules
+cat > /etc/nginx/nginx.conf <<EOF
+user nginx;
+worker_processes auto;
+error_log /var/log/nginx/error.log;
+pid /run/nginx.pid;
+include /usr/share/nginx/modules/*.conf;
+events {
+  worker_connections 1024;
+}
+stream {
+  server {
+    listen ${proxy.port};
+    proxy_pass ${proxy.host}:${proxy.port};
+  }
+}
+EOF
+systemctl start nginx
+`;
 }

@@ -1,8 +1,7 @@
-import { assert } from "chai";
 import { readFile } from "fs/promises";
 import { connect } from "net";
 import promiseRetry from "promise-retry";
-import { apply, loadCloudInitTemplate } from "../lib/tunnel";
+import { apply } from "../lib/tunnel";
 import { applyAlicloudProgram } from "./helper";
 import * as os from "os";
 

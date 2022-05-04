@@ -1,25 +1,19 @@
 import * as aws from "@pulumi/aws";
 import * as pulumi from "@pulumi/pulumi";
-import { readFile } from "fs/promises";
 import * as _ from "lodash";
 import * as domain from "./domain";
-import defaultResource from "./resourceUtils";
+import { defaultResource } from "./utils";
 
-export async function apply(
+export function apply(
   bucket: aws.s3.Bucket,
   shadowsocksConfig: domain.ShadowsocksConfiguration
-): Promise<{ publicIpAddress: pulumi.Output<string> }> {
+): { publicIpAddress: pulumi.Output<string> } {
   const artifactsPath = "proxy";
   new aws.s3.BucketObject("shadowsocksConfig", {
     bucket: bucket.id,
     key: artifactsPath + "/config.json",
     forceDestroy: true,
-    content: JSON.stringify({
-      server: "::",
-      server_port: shadowsocksConfig.port,
-      password: shadowsocksConfig.password,
-      method: shadowsocksConfig.encryption,
-    }),
+    content: shadowsocksConfigFileContent(shadowsocksConfig),
   });
   new aws.s3.BucketObject("shadowsocksDockerCompose", {
     bucket: bucket.id,
@@ -48,27 +42,14 @@ export async function apply(
   const accessKey: aws.iam.AccessKey = defaultResource(aws.iam.AccessKey, {
     user: agentUser.name,
   });
-  const userDataTemplate = await readFile(
-    __dirname + "/cloud-init.tpl",
-    "utf8"
-  );
-  const userData: pulumi.Output<any> = pulumi
-    .all([accessKey.id, accessKey.secret, bucket.bucket])
-    .apply(([id, secret, bucketName]) => {
-      return _.template(userDataTemplate)({
-        accessKeyId: id,
-        accessKeySecret: secret,
-        artifactsUri: `s3://${bucketName}/${artifactsPath}`,
-      });
-    });
 
   const instance: aws.lightsail.Instance = defaultResource(
     aws.lightsail.Instance,
     {
-      availabilityZone: `${(await aws.getRegion()).name}a`,
+      availabilityZone: pulumi.concat(pulumi.output(aws.getRegion()).name, "a"),
       blueprintId: "amazon_linux_2",
       bundleId: "nano_2_0",
-      userData,
+      userData: cloudInitScript(accessKey, bucket, artifactsPath),
     }
   );
   defaultResource(aws.lightsail.InstancePublicPorts, {
@@ -82,4 +63,36 @@ export async function apply(
     ],
   });
   return { publicIpAddress: instance.publicIpAddress };
+}
+
+function shadowsocksConfigFileContent(
+  config: domain.ShadowsocksConfiguration
+): string {
+  return JSON.stringify({
+    server: "::",
+    server_port: config.port,
+    password: config.password,
+    method: config.encryption,
+  });
+}
+
+function cloudInitScript(
+  accessKey: aws.iam.AccessKey,
+  bucket: aws.s3.Bucket,
+  artifactsPath: pulumi.Input<string>
+): pulumi.Output<string> {
+  return pulumi.interpolate`
+aws configure set aws_access_key_id ${accessKey.id}
+aws configure set aws_secret_access_key ${accessKey.secret}
+yum update -y
+amazon-linux-extras install docker
+service docker start
+curl --silent -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+chmod +x /usr/local/bin/docker-compose
+ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
+
+SHADOWSOCKS_HOME=/opt/shadowsocks
+mkdir $SHADOWSOCKS_HOME && aws s3 cp s3://${bucket.bucket}/${artifactsPath} $SHADOWSOCKS_HOME/ --recursive
+docker-compose --project-directory $SHADOWSOCKS_HOME up --detach
+`;
 }

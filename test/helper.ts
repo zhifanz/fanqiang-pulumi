@@ -6,22 +6,20 @@ import {
   Stack,
   UpResult,
 } from "@pulumi/pulumi/automation";
-import _ from "lodash";
+import net from "net";
+import promiseRetry from "promise-retry";
 
 export const stackHolder: { stack?: Stack } = {};
 
-export async function applyProgram(
-  program: PulumiFn,
-  region: string = "us-east-1"
-): Promise<UpResult> {
+export async function applyProgram(program: PulumiFn): Promise<UpResult> {
   const stackArgs: InlineProgramArgs = {
     stackName: "test",
     projectName: project.name,
     program,
   };
   const stack = await LocalWorkspace.createOrSelectStack(stackArgs);
-  await stack.setConfig("aws:region", { value: region });
   await stack.workspace.installPlugin("aws", "v5.2.0");
+  await stack.workspace.installPlugin("alicloud", "v3.19.0");
   stackHolder.stack = stack;
   return stack.up({
     onOutput: console.log,
@@ -33,25 +31,32 @@ export async function applyProgram(
   });
 }
 
-export async function applyAlicloudProgram(
-  program: PulumiFn,
-  region: string = "cn-shanghai"
-): Promise<UpResult> {
-  const stackArgs: InlineProgramArgs = {
-    stackName: "test",
-    projectName: project.name,
-    program,
-  };
-  const stack = await LocalWorkspace.createOrSelectStack(stackArgs);
-  await stack.setConfig("alicloud:region", { value: region });
-  await stack.workspace.installPlugin("alicloud", "v3.19.0");
-  stackHolder.stack = stack;
-  return stack.up({
-    onOutput: console.log,
-    onEvent: (event) => {
-      if (event.diagnosticEvent?.severity == "error") {
-        throw new Error(event.diagnosticEvent.message);
+export async function assertConnectSuccess(
+  host: string,
+  port: number
+): Promise<void> {
+  await promiseRetry(
+    async (retry, number): Promise<void> => {
+      try {
+        await tryConnect(host, port);
+      } catch (err) {
+        retry(err);
       }
     },
+    { retries: 10, maxRetryTime: 300 * 1000, minTimeout: 15 * 1000 }
+  );
+}
+
+async function tryConnect(host: string, port: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const client = net.connect(port, host);
+    client.on("connect", () => {
+      resolve();
+      client.removeAllListeners().destroy();
+    });
+    client.on("error", (err: Error) => {
+      reject(err);
+      client.removeAllListeners().destroy();
+    });
   });
 }

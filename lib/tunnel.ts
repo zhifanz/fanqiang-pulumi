@@ -1,5 +1,5 @@
 import * as domain from "./domain";
-import { defaultResource } from "./utils";
+import { DEFAULT_RESOURCE_NAME, PULUMI_PROJECT_NAME } from "./utils";
 import * as pulumi from "@pulumi/pulumi";
 import * as alicloud from "@pulumi/alicloud";
 import _ from "lodash";
@@ -8,121 +8,152 @@ type Proxy = domain.Input<
   Pick<domain.ShadowsocksServerConfiguration, "host" | "port">
 >;
 
-export async function apply(
-  proxy: Proxy,
-  tunnelConfig: domain.TunnelConfiguration
-): Promise<{ publicIpAddress: pulumi.Output<string> }> {
-  const vpc = defaultResource(alicloud.vpc.Network, {
-    cidrBlock: "192.168.0.0/16",
-  });
-
-  const securityGroup: alicloud.ecs.SecurityGroup = defaultResource(
-    alicloud.ecs.SecurityGroup,
-    {
-      vpcId: vpc.id,
-    }
-  );
-  createIngressRule("default", proxy.port, securityGroup);
-  if (tunnelConfig.publicKey) {
-    createIngressRule("ssh", 22, securityGroup);
-  }
-  const elasticIp: alicloud.ecs.EipAddress = defaultResource(
-    alicloud.ecs.EipAddress,
-    {
-      bandwidth: tunnelConfig.bandwidth,
-      internetChargeType: "PayByTraffic",
-    }
-  );
-  const ramRole = defaultResource(alicloud.ram.Role, {
-    document: JSON.stringify({
-      Statement: [
-        {
-          Action: "sts:AssumeRole",
-          Effect: "Allow",
-          Principal: {
-            Service: ["ecs.aliyuncs.com"],
+export class AlicloudEcsNginxTunnel extends pulumi.ComponentResource {
+  readonly publicIpAddress: pulumi.Output<string>;
+  constructor(
+    name: string,
+    proxy: Proxy,
+    tunnelConfig: domain.TunnelConfiguration
+  ) {
+    super(`${PULUMI_PROJECT_NAME}:tunnel:AlicloudEcsNginxTunnel`, name);
+    const vpc = new alicloud.vpc.Network(
+      `${name}-${DEFAULT_RESOURCE_NAME}`,
+      { cidrBlock: "192.168.0.0/16" },
+      { parent: this }
+    );
+    const switches = fromAllZones(
+      (zoneId, index) =>
+        new alicloud.vpc.Switch(
+          `${name}-${zoneId}`,
+          {
+            zoneId,
+            vpcId: vpc.id,
+            cidrBlock: `192.168.${index}.0/24`,
           },
+          { parent: this }
+        )
+    );
+
+    const securityGroup = new alicloud.ecs.SecurityGroup(
+      `${name}-${DEFAULT_RESOURCE_NAME}`,
+      { vpcId: vpc.id },
+      { parent: this }
+    );
+    new alicloud.ecs.SecurityGroupRule(
+      `${name}-default`,
+      ingressRuleArgs(securityGroup.id, proxy.port),
+      { parent: this }
+    );
+    if (tunnelConfig.publicKey) {
+      new alicloud.ecs.SecurityGroupRule(
+        `${name}-ssh`,
+        ingressRuleArgs(securityGroup.id, 22),
+        { parent: this }
+      );
+    }
+    const elasticIp = new alicloud.ecs.EipAddress(
+      `${name}-${DEFAULT_RESOURCE_NAME}`,
+      { bandwidth: tunnelConfig.bandwidth, internetChargeType: "PayByTraffic" },
+      { parent: this }
+    );
+    const ramRole = new alicloud.ram.Role(
+      `${name}-${DEFAULT_RESOURCE_NAME}`,
+      {
+        document: JSON.stringify({
+          Statement: [
+            {
+              Action: "sts:AssumeRole",
+              Effect: "Allow",
+              Principal: {
+                Service: ["ecs.aliyuncs.com"],
+              },
+            },
+          ],
+          Version: "1",
+        }),
+      },
+      { parent: this }
+    );
+    new alicloud.ram.RolePolicyAttachment(
+      `${name}-${DEFAULT_RESOURCE_NAME}`,
+      {
+        policyName: "AliyunEIPFullAccess",
+        policyType: "System",
+        roleName: ramRole.id,
+      },
+      { parent: this }
+    );
+    const launchTemplate = new alicloud.ecs.LaunchTemplate(
+      `${name}-${DEFAULT_RESOURCE_NAME}`,
+      {
+        launchTemplateName: "FanqiangTunnelTemplate",
+        imageId: "aliyun_2_1903_x64_20G_alibase_20210726.vhd",
+        instanceChargeType: "PostPaid",
+        instanceType: "ecs.t5-lc2m1.nano",
+        securityGroupId: securityGroup.id,
+        spotDuration: "0",
+        spotStrategy: "SpotAsPriceGo",
+        ramRoleName: ramRole.id,
+        keyPairName:
+          tunnelConfig.publicKey &&
+          new alicloud.ecs.EcsKeyPair("default", {
+            publicKey: tunnelConfig.publicKey,
+          }).id,
+        userData: cloudInitScript(elasticIp, proxy).apply((data) =>
+          Buffer.from(data).toString("base64")
+        ),
+        systemDisk: {
+          category: "cloud_efficiency",
+          deleteWithInstance: true,
+          size: 40,
         },
-      ],
-      Version: "1",
-    }),
-  });
-  defaultResource(alicloud.ram.RolePolicyAttachment, {
-    policyName: "AliyunEIPFullAccess",
-    policyType: "System",
-    roleName: ramRole.id,
-  });
-  const launchTemplate = defaultResource(alicloud.ecs.LaunchTemplate, {
-    launchTemplateName: "FanqiangTunnelTemplate",
-    imageId: "aliyun_2_1903_x64_20G_alibase_20210726.vhd",
-    instanceChargeType: "PostPaid",
-    instanceType: "ecs.t5-lc2m1.nano",
-    securityGroupId: securityGroup.id,
-    spotDuration: "0",
-    spotStrategy: "SpotAsPriceGo",
-    ramRoleName: ramRole.id,
-    keyPairName:
-      tunnelConfig.publicKey &&
-      new alicloud.ecs.EcsKeyPair("default", {
-        publicKey: tunnelConfig.publicKey,
-      }).id,
-    userData: cloudInitScript(elasticIp, proxy).apply((data) =>
-      Buffer.from(data).toString("base64")
-    ),
-    systemDisk: {
-      category: "cloud_efficiency",
-      deleteWithInstance: true,
-      size: 40,
-    },
-  });
-  defaultResource(alicloud.ecs.AutoProvisioningGroup, {
-    launchTemplateId: launchTemplate.id,
-    totalTargetCapacity: "1",
-    payAsYouGoTargetCapacity: "0",
-    spotTargetCapacity: "1",
-    autoProvisioningGroupType: "maintain",
-    spotAllocationStrategy: "lowest-price",
-    spotInstanceInterruptionBehavior: "terminate",
-    excessCapacityTerminationPolicy: "termination",
-    terminateInstances: true,
-    launchTemplateConfigs: createlaunchTemplateConfigs(
-      vpc.id,
-      tunnelConfig.maxPrice
-    ),
-  });
-  return { publicIpAddress: elasticIp.ipAddress };
+      },
+      { parent: this }
+    );
+    new alicloud.ecs.AutoProvisioningGroup(
+      `${name}-${DEFAULT_RESOURCE_NAME}`,
+      {
+        launchTemplateId: launchTemplate.id,
+        totalTargetCapacity: "1",
+        payAsYouGoTargetCapacity: "0",
+        spotTargetCapacity: "1",
+        autoProvisioningGroupType: "maintain",
+        spotAllocationStrategy: "lowest-price",
+        spotInstanceInterruptionBehavior: "terminate",
+        excessCapacityTerminationPolicy: "termination",
+        terminateInstances: true,
+        launchTemplateConfigs: switches.apply((e) =>
+          e.map((s) => ({
+            maxPrice: tunnelConfig.maxPrice,
+            vswitchId: s.id,
+            weightedCapacity: "1",
+          }))
+        ),
+      },
+      { parent: this }
+    );
+    this.publicIpAddress = elasticIp.ipAddress;
+    this.registerOutputs();
+  }
 }
 
-async function createlaunchTemplateConfigs(
-  vpcId: pulumi.Input<string>,
-  maxPrice: string
-) {
-  const formater = new Intl.NumberFormat(undefined, {
-    minimumIntegerDigits: 2,
-  });
-  return (await alicloud.getZones()).ids.map((zoneId, index) => ({
-    maxPrice,
-    vswitchId: new alicloud.vpc.Switch("default-" + formater.format(index), {
-      cidrBlock: `192.168.${index}.0/24`,
-      vpcId,
-      zoneId,
-    }).id,
-    weightedCapacity: "1",
-  }));
+function fromAllZones<T extends pulumi.CustomResource>(
+  callback: (zoneId: string, index: number) => T
+): pulumi.Output<T[]> {
+  return alicloud.getZonesOutput().ids.apply((ids) => ids.map(callback));
 }
 
-function createIngressRule(
-  name: string,
-  port: pulumi.Input<number>,
-  sg: alicloud.ecs.SecurityGroup
+function ingressRuleArgs(
+  securityGroupId: pulumi.Input<string>,
+  port: pulumi.Input<number>
 ) {
-  new alicloud.ecs.SecurityGroupRule(name, {
-    securityGroupId: sg.id,
+  return {
+    securityGroupId,
     ipProtocol: "tcp",
     type: "ingress",
     cidrIp: "0.0.0.0/0",
     portRange: pulumi.concat(port, "/", port),
-  });
+  };
 }
 
 function cloudInitScript(

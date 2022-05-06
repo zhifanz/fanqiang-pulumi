@@ -4,7 +4,9 @@
     "@pulumi/alicloud": "^3.19.0",
     "@pulumi/aws": "^5.2.0",
     "@pulumi/pulumi": "^3.0.0",
+    "@types/js-yaml": "^4.0.5",
     "@types/lodash": "^4.14.182",
+    "js-yaml": "^4.1.0",
     "lodash": "^4.17.21"
   },
   "devDependencies": {

@@ -7,13 +7,12 @@ describe("proxy", () => {
     it("checking proxy port open", async () => {
       const result = await applyProgram(() => {
         const bucket = common.apply("fanqiang-dev").bucket;
-        return Promise.resolve(
-          proxy.apply(bucket, {
-            encryption: "aes-256-gcm",
-            port: 8388,
-            password: "foo",
-          })
-        );
+        const component = new proxy.LightsailShadowsocksProxy("test", bucket, {
+          encryption: "aes-256-gcm",
+          port: 8388,
+          password: "foo",
+        });
+        return Promise.resolve({ publicIpAddress: component.publicIpAddress });
       });
       const ip = result.outputs["publicIpAddress"].value;
 

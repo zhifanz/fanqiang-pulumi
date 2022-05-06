@@ -1,68 +1,102 @@
 import * as aws from "@pulumi/aws";
 import * as pulumi from "@pulumi/pulumi";
-import * as _ from "lodash";
+import _ from "lodash";
 import * as domain from "./domain";
-import { defaultResource } from "./utils";
+import { DEFAULT_RESOURCE_NAME, PULUMI_PROJECT_NAME } from "./utils";
 
-export function apply(
-  bucket: aws.s3.Bucket,
-  shadowsocksConfig: domain.ShadowsocksConfiguration
-): { publicIpAddress: pulumi.Output<string> } {
-  const artifactsPath = "proxy";
-  new aws.s3.BucketObject("shadowsocksConfig", {
-    bucket: bucket.id,
-    key: artifactsPath + "/config.json",
-    forceDestroy: true,
-    content: shadowsocksConfigFileContent(shadowsocksConfig),
-  });
-  new aws.s3.BucketObject("shadowsocksDockerCompose", {
-    bucket: bucket.id,
-    key: artifactsPath + "/docker-compose.yml",
-    forceDestroy: true,
-    source: new pulumi.asset.FileAsset(__dirname + "/docker-compose.yml"),
-  });
-  const agentUser: aws.iam.User = defaultResource(aws.iam.User, {
-    forceDestroy: true,
-  });
-  defaultResource(aws.iam.UserPolicy, {
-    user: agentUser.name,
-    policy: bucket.arn.apply((arn) =>
-      JSON.stringify({
-        Version: "2012-10-17",
-        Statement: [
+export class LightsailShadowsocksProxy extends pulumi.ComponentResource {
+  readonly publicIpAddress: pulumi.Output<string>;
+  constructor(
+    name: string,
+    bucket: aws.s3.Bucket,
+    shadowsocksConfig: domain.ShadowsocksConfiguration
+  ) {
+    super(`${PULUMI_PROJECT_NAME}:proxy:LightsailShadowsocksProxy`, name);
+    const artifactsPath = "proxy";
+    new aws.s3.BucketObject(
+      `${name}-shadowsocksConfig`,
+      {
+        bucket: bucket.id,
+        key: artifactsPath + "/config.json",
+        forceDestroy: true,
+        content: shadowsocksConfigFileContent(shadowsocksConfig),
+      },
+      { parent: this }
+    );
+    new aws.s3.BucketObject(
+      `${name}-shadowsocksDockerCompose`,
+      {
+        bucket: bucket.id,
+        key: artifactsPath + "/docker-compose.yml",
+        forceDestroy: true,
+        source: new pulumi.asset.FileAsset(__dirname + "/docker-compose.yml"),
+      },
+      { parent: this }
+    );
+    const agentUser = new aws.iam.User(
+      `${name}-${DEFAULT_RESOURCE_NAME}`,
+      {
+        forceDestroy: true,
+      },
+      { parent: this }
+    );
+    new aws.iam.UserPolicy(
+      `${name}-${DEFAULT_RESOURCE_NAME}`,
+      {
+        user: agentUser.name,
+        policy: bucket.arn.apply((arn) =>
+          JSON.stringify({
+            Version: "2012-10-17",
+            Statement: [
+              {
+                Effect: "Allow",
+                Action: "s3:*",
+                Resource: [arn + "/*", arn],
+              },
+            ],
+          })
+        ),
+      },
+      { parent: this }
+    );
+    const accessKey = new aws.iam.AccessKey(
+      `${name}-${DEFAULT_RESOURCE_NAME}`,
+      {
+        user: agentUser.name,
+      },
+      { parent: this }
+    );
+
+    const instance: aws.lightsail.Instance = new aws.lightsail.Instance(
+      `${name}-${DEFAULT_RESOURCE_NAME}`,
+      {
+        availabilityZone: pulumi.concat(
+          pulumi.output(aws.getRegion()).name,
+          "a"
+        ),
+        blueprintId: "amazon_linux_2",
+        bundleId: "nano_2_0",
+        userData: cloudInitScript(accessKey, bucket, artifactsPath),
+      },
+      { parent: this }
+    );
+    new aws.lightsail.InstancePublicPorts(
+      `${name}-${DEFAULT_RESOURCE_NAME}`,
+      {
+        instanceName: instance.name,
+        portInfos: [
           {
-            Effect: "Allow",
-            Action: "s3:*",
-            Resource: [arn + "/*", arn],
+            protocol: "tcp",
+            fromPort: shadowsocksConfig.port,
+            toPort: shadowsocksConfig.port,
           },
         ],
-      })
-    ),
-  });
-  const accessKey: aws.iam.AccessKey = defaultResource(aws.iam.AccessKey, {
-    user: agentUser.name,
-  });
-
-  const instance: aws.lightsail.Instance = defaultResource(
-    aws.lightsail.Instance,
-    {
-      availabilityZone: pulumi.concat(pulumi.output(aws.getRegion()).name, "a"),
-      blueprintId: "amazon_linux_2",
-      bundleId: "nano_2_0",
-      userData: cloudInitScript(accessKey, bucket, artifactsPath),
-    }
-  );
-  defaultResource(aws.lightsail.InstancePublicPorts, {
-    instanceName: instance.name,
-    portInfos: [
-      {
-        protocol: "tcp",
-        fromPort: shadowsocksConfig.port,
-        toPort: shadowsocksConfig.port,
       },
-    ],
-  });
-  return { publicIpAddress: instance.publicIpAddress };
+      { parent: this }
+    );
+    this.publicIpAddress = instance.publicIpAddress;
+    this.registerOutputs();
+  }
 }
 
 function shadowsocksConfigFileContent(

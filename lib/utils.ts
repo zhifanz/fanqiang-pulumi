@@ -1,8 +1,19 @@
 import { CustomResource, Input, output, Output } from "@pulumi/pulumi";
-import { PathLike } from "fs";
-import { readFile } from "fs/promises";
+import { readFileSync } from "fs";
 import _ from "lodash";
 import * as path from "path";
+import yaml from "js-yaml";
+
+export const DEFAULT_RESOURCE_NAME = "default";
+export const PULUMI_PROJECT_NAME = loadPulumiProjectConfiguration().name;
+
+function loadPulumiProjectConfiguration(): { name: string } {
+  return <any>(
+    yaml.load(
+      readFileSync(path.resolve(__dirname, "..", "Pulumi.yaml"), "utf8")
+    )
+  );
+}
 
 export function defaultResource<
   T extends CustomResource,

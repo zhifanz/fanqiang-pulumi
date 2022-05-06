@@ -12,7 +12,6 @@ export type ShadowsocksServerConfiguration = ShadowsocksConfiguration & {
 export type TunnelConfiguration = {
   bandwidth: string;
   maxPrice: string;
-  publicKey?: string;
 };
 
 export type Input<T> = { [K in keyof T]: pulumi.Input<T[K]> };

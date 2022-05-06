@@ -1,3 +1,4 @@
+import { protocol } from "@pulumi/alicloud/config";
 import * as aws from "@pulumi/aws";
 import * as pulumi from "@pulumi/pulumi";
 import _ from "lodash";
@@ -9,7 +10,8 @@ export class LightsailShadowsocksProxy extends pulumi.ComponentResource {
   constructor(
     name: string,
     bucket: aws.s3.Bucket,
-    shadowsocksConfig: domain.ShadowsocksConfiguration
+    shadowsocksConfig: domain.ShadowsocksConfiguration,
+    publicKey?: string
   ) {
     super(`${PULUMI_PROJECT_NAME}:proxy:LightsailShadowsocksProxy`, name);
     const artifactsPath = "proxy";
@@ -77,6 +79,13 @@ export class LightsailShadowsocksProxy extends pulumi.ComponentResource {
         blueprintId: "amazon_linux_2",
         bundleId: "nano_2_0",
         userData: cloudInitScript(accessKey, bucket, artifactsPath),
+        keyPairName:
+          publicKey &&
+          new aws.lightsail.KeyPair(
+            DEFAULT_RESOURCE_NAME,
+            { publicKey },
+            { parent: this }
+          ).name,
       },
       { parent: this }
     );
@@ -84,13 +93,13 @@ export class LightsailShadowsocksProxy extends pulumi.ComponentResource {
       `${name}-${DEFAULT_RESOURCE_NAME}`,
       {
         instanceName: instance.name,
-        portInfos: [
-          {
+        portInfos: _.compact([shadowsocksConfig.port, publicKey && 22]).map(
+          (p) => ({
             protocol: "tcp",
-            fromPort: shadowsocksConfig.port,
-            toPort: shadowsocksConfig.port,
-          },
-        ],
+            fromPort: p,
+            toPort: p,
+          })
+        ),
       },
       { parent: this }
     );

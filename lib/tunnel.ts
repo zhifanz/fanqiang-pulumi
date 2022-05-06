@@ -13,7 +13,8 @@ export class AlicloudEcsNginxTunnel extends pulumi.ComponentResource {
   constructor(
     name: string,
     proxy: Proxy,
-    tunnelConfig: domain.TunnelConfiguration
+    tunnelConfig: domain.TunnelConfiguration,
+    publicKey?: string
   ) {
     super(`${PULUMI_PROJECT_NAME}:tunnel:AlicloudEcsNginxTunnel`, name);
     const vpc = new alicloud.vpc.Network(
@@ -44,7 +45,7 @@ export class AlicloudEcsNginxTunnel extends pulumi.ComponentResource {
       ingressRuleArgs(securityGroup.id, proxy.port),
       { parent: this }
     );
-    if (tunnelConfig.publicKey) {
+    if (publicKey) {
       new alicloud.ecs.SecurityGroupRule(
         `${name}-ssh`,
         ingressRuleArgs(securityGroup.id, 22),
@@ -95,10 +96,12 @@ export class AlicloudEcsNginxTunnel extends pulumi.ComponentResource {
         spotStrategy: "SpotAsPriceGo",
         ramRoleName: ramRole.id,
         keyPairName:
-          tunnelConfig.publicKey &&
-          new alicloud.ecs.EcsKeyPair("default", {
-            publicKey: tunnelConfig.publicKey,
-          }).id,
+          publicKey &&
+          new alicloud.ecs.EcsKeyPair(
+            DEFAULT_RESOURCE_NAME,
+            { publicKey },
+            { parent: this }
+          ).keyPairName,
         userData: cloudInitScript(elasticIp, proxy).apply((data) =>
           Buffer.from(data).toString("base64")
         ),
@@ -160,8 +163,7 @@ function cloudInitScript(
   eip: alicloud.ecs.EipAddress,
   proxy: Proxy
 ): pulumi.Output<string> {
-  return pulumi.interpolate`
-#!/bin/bash
+  return pulumi.interpolate`#!/bin/bash
 
 REGION="$(curl --silent http://100.100.100.200/latest/meta-data/region-id)"
 aliyun configure set --region $REGION --mode EcsRamRole \

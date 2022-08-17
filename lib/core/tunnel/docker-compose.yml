@@ -1,0 +1,21 @@
+version: "3"
+services:
+  clash:
+    image: dreamacro/clash
+    container_name: clash
+    volumes:
+      - ./config.yaml:/root/.config/clash/config.yaml
+    restart: always
+    network_mode: host
+    logging:
+      driver: fluentd
+    depends_on:
+      - fluentbit
+
+  fluentbit:
+    image: fluent/fluent-bit:1.8
+    volumes:
+      - ./fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf
+      - /root/.aws:/root/.aws
+    restart: always
+    network_mode: host

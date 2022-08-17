@@ -1,45 +1,61 @@
-import * as domain from "./domain";
-import * as common from "./common";
-import * as client from "./client";
-import * as proxy from "./proxy";
-import * as tunnel from "./tunnel";
+import { createSharedResources } from "./core/common";
 import * as pulumi from "@pulumi/pulumi";
-import { DEFAULT_RESOURCE_NAME } from "./utils";
+import {
+  InfrastructureConstructionResult,
+  MinimalInfrastructureConstructionService,
+  ModerateInfrastructureConstructionService,
+  PremiumInfrastructureConstructionService,
+} from "./domain/InfrastructureConstructionService";
+import { createLightsailShadowsocksProxy } from "./core/proxy/LightsailShadowsocksProxy";
+import { ClashClientConfiguration } from "./core/client";
+import { createAlicloudEcsNginxTunnel } from "./core/tunnel/AlicloudEcsNginxTunnelConstructor";
+import { getRouterFactory } from "./core/tunnel/AlicloudEcsClashTunnelConstructor";
+import { EndpointDebugging } from "./domain/EndpointDebugging";
 
-export async function apply() {
+export function apply(): InfrastructureConstructionResult {
   const stackConfig = new pulumi.Config();
-  const config = {
-    password: stackConfig.require("password"),
-    port: stackConfig.requireNumber("port"),
-    encryption: stackConfig.require("encryption"),
-    bandwidth: stackConfig.require("bandwidth"),
-    maxPrice: stackConfig.require("maxPrice"),
-    publicKey: stackConfig.get("publicKey"),
-  };
-  const scale: domain.InfraScale = stackConfig.require("scale");
-  const result: Record<string, pulumi.Output<any>> = {};
-  const bucket = common.apply(stackConfig.require("bucket")).bucket;
-  const proxyResult = new proxy.LightsailShadowsocksProxy(
-    DEFAULT_RESOURCE_NAME,
-    bucket,
-    config,
-    config.publicKey
-  );
-  let publicIpAddress = proxyResult.publicIpAddress;
-  result.proxyIpAddress = publicIpAddress;
-  if (scale == "moderate") {
-    const tunnelResult = new tunnel.AlicloudEcsNginxTunnel(
-      DEFAULT_RESOURCE_NAME,
-      { host: publicIpAddress, port: config.port },
-      config,
-      config.publicKey
-    );
-    publicIpAddress = tunnelResult.publicIpAddress;
-    result.tunnelIpAddress = publicIpAddress;
+  const encryption = stackConfig.require("encryption");
+  const password = stackConfig.require("password");
+  const sharedResources = createSharedResources(stackConfig.require("bucket"));
+  let result = undefined;
+  let proxyFactory = createLightsailShadowsocksProxy;
+  const vpnClient = new ClashClientConfiguration(sharedResources.bucket);
+  const publicKey = stackConfig.get("publicKey");
+  let debugging;
+  if (publicKey) {
+    debugging = new EndpointDebugging(publicKey);
+    proxyFactory = debugging.interceptProxyServerFactory(proxyFactory);
   }
-  const clientResult = client.apply(bucket, {
-    host: publicIpAddress,
-    ...config,
-  });
-  return { ...result, ...clientResult };
+
+  switch (stackConfig.require("scale")) {
+    case "minimal":
+      result = new MinimalInfrastructureConstructionService(
+        proxyFactory,
+        vpnClient
+      ).constructInfrastructure(encryption, password);
+      break;
+    case "moderate":
+      result = new ModerateInfrastructureConstructionService(
+        proxyFactory,
+        debugging
+          ? debugging.interceptForwardProxyFactory(createAlicloudEcsNginxTunnel)
+          : createAlicloudEcsNginxTunnel,
+        vpnClient
+      ).constructInfrastructure(encryption, password);
+      break;
+    case "premium":
+      const routerFactory = getRouterFactory(sharedResources.bucket);
+      result = new PremiumInfrastructureConstructionService(
+        proxyFactory,
+        debugging
+          ? debugging.interceptRouterFactory(routerFactory)
+          : routerFactory,
+        vpnClient
+      ).constructInfrastructure(encryption, password);
+      break;
+    default:
+      throw new Error("Unknown scale type: " + stackConfig.require("scale"));
+  }
+
+  return result;
 }

@@ -18,8 +18,12 @@ export async function applyProgram(program: PulumiFn): Promise<UpResult> {
     program,
   };
   const stack = await LocalWorkspace.createOrSelectStack(stackArgs);
-  await stack.workspace.installPlugin("aws", "v5.2.0");
+  stack.setConfig("alicloud:region", { value: "cn-shanghai" });
+  stack.setConfig("aws:region", { value: "us-east-1" });
+  console.log("Downloading plugins...");
+  await stack.workspace.installPlugin("aws", "v5.3.0");
   await stack.workspace.installPlugin("alicloud", "v3.19.0");
+  console.log("Plugin download completed!");
   stackHolder.stack = stack;
   return stack.up({
     onOutput: console.log,

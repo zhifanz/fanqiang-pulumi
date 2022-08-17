@@ -10,7 +10,7 @@ export const PULUMI_PROJECT_NAME = loadPulumiProjectConfiguration().name;
 function loadPulumiProjectConfiguration(): { name: string } {
   return <any>(
     yaml.load(
-      readFileSync(path.resolve(__dirname, "..", "Pulumi.yaml"), "utf8")
+      readFileSync(path.resolve(__dirname, "../../Pulumi.yaml"), "utf8")
     )
   );
 }

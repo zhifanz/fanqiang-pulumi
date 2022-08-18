@@ -66,7 +66,7 @@ rules:
 function routerConfiguration(params: Router): pulumi.Output<string> {
   return pulumi.interpolate`
 mixed-port: 7890
-mode: global
+mode: rule
 tun:
   enable: true
   stack: system

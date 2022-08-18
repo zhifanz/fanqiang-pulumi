@@ -80,6 +80,14 @@ export class AlicloudEcsClashRouterConstructor extends AlicloudEcsTunnelConstruc
       forceDestroy: true,
       content: fluentbitConf(logGroup.name, logStream.name),
     });
+    new aws.s3.BucketObject("fluentbitParsers", {
+      bucket: this.bucket.id,
+      key: "tunnel/fluent-bit-parsers.conf",
+      forceDestroy: true,
+      source: new pulumi.asset.FileAsset(
+        path.join(__dirname, "fluent-bit-parsers.conf")
+      ),
+    });
     new aws.s3.BucketObject("tunnelClashConfig", {
       bucket: this.bucket.id,
       key: "tunnel/config.yaml",
@@ -151,8 +159,22 @@ function fluentbitConf(
   logStream: pulumi.Input<string>
 ): pulumi.Output<string> {
   return pulumi.interpolate`
+[SERVICE]
+    parsers_file /fluent-bit/etc/fluent-bit-parsers.conf
+
 [INPUT]
     name forward
+
+[FILTER]
+    name parser
+    match *
+    key_name log
+    parser info
+
+[FILTER]
+    name grep
+    match *
+    exclude log .+
 
 [OUTPUT]
     Name cloudwatch_logs

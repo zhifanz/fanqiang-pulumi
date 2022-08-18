@@ -16,6 +16,7 @@ services:
     image: fluent/fluent-bit:1.8
     volumes:
       - ./fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf
+      - ./fluent-bit-parsers.conf:/fluent-bit/etc/fluent-bit-parsers.conf
       - /root/.aws:/root/.aws
     restart: always
     network_mode: host

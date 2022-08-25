@@ -1,12 +1,12 @@
-import project from "../../../package.json";
 import * as pulumi from "@pulumi/pulumi";
 import * as alicloud from "@pulumi/alicloud";
 import * as aws from "@pulumi/aws";
+import * as path from "node:path";
 import { AlicloudEcsTunnelConstructor } from "./AlicloudEcsTunnelConstructor";
-import path from "path";
-import { DEFAULT_RESOURCE_NAME } from "../utils";
 import { Router, RouterFactory } from "../../domain/Router";
 import { ProxyServer } from "../../domain/ProxyServer";
+import { createOpenSearchService } from "./openSearchService";
+import { interpolate } from "@pulumi/pulumi";
 
 export function getRouterFactory(bucket: aws.s3.Bucket): RouterFactory {
   return (proxyServer: ProxyServer, publicKey?: string): Router => {
@@ -29,6 +29,7 @@ export class AlicloudEcsClashRouterConstructor extends AlicloudEcsTunnelConstruc
   readonly port = pulumi.output(7890);
   private readonly agentUser: aws.iam.User;
   private readonly accessKey: aws.iam.AccessKey;
+  private readonly files: aws.s3.BucketObject[];
   constructor(
     private readonly proxy: ProxyServer,
     private readonly bucket: aws.s3.Bucket,
@@ -41,67 +42,71 @@ export class AlicloudEcsClashRouterConstructor extends AlicloudEcsTunnelConstruc
     this.accessKey = new aws.iam.AccessKey("defaultAgent", {
       user: this.agentUser.name,
     });
+    this.files = [];
+  }
+
+  private createBucketObject(
+    name: string,
+    file: string | pulumi.Output<string>
+  ): aws.s3.BucketObject {
+    const args: aws.s3.BucketObjectArgs = {
+      bucket: this.bucket.id,
+      key: "tunnel/" + name,
+      forceDestroy: true,
+    };
+    if (typeof file == "string") {
+      args.source = new pulumi.asset.FileAsset(file);
+    } else {
+      args.content = file;
+    }
+    return new aws.s3.BucketObject(name, args);
   }
 
   apply(): { publicIpAddress: pulumi.Output<string> } {
-    const logGroup = new aws.cloudwatch.LogGroup(DEFAULT_RESOURCE_NAME, {
-      namePrefix: "fanqiang",
-      retentionInDays: 7,
-    });
-    const logStream = new aws.cloudwatch.LogStream(DEFAULT_RESOURCE_NAME, {
-      name: "clash",
-      logGroupName: logGroup.name,
-    });
+    const opensearch = createOpenSearchService(
+      "fanqiang",
+      "internet-access-events"
+    );
     new aws.iam.UserPolicy("defaultAgent", {
       user: this.agentUser.name,
-      policy: pulumi
-        .all([this.bucket.arn, logGroup.arn])
-        .apply(([bucket, logGroup]) =>
-          JSON.stringify({
-            Version: "2012-10-17",
-            Statement: [
-              {
-                Effect: "Allow",
-                Action: "s3:*",
-                Resource: [bucket + "/*", bucket],
-              },
-              {
-                Effect: "Allow",
-                Action: "logs:*",
-                Resource: logGroup + ":*",
-              },
-            ],
-          })
-        ),
+      policy: pulumi.all([this.bucket.arn]).apply(([bucketArn]) =>
+        JSON.stringify({
+          Version: "2012-10-17",
+          Statement: [
+            {
+              Effect: "Allow",
+              Action: "s3:*",
+              Resource: [bucketArn + "/*", bucketArn],
+            },
+          ],
+        })
+      ),
     });
-    new aws.s3.BucketObject("fluentbitConf", {
-      bucket: this.bucket.id,
-      key: "tunnel/fluent-bit.conf",
-      forceDestroy: true,
-      content: fluentbitConf(logGroup.name, logStream.name),
-    });
-    new aws.s3.BucketObject("fluentbitParsers", {
-      bucket: this.bucket.id,
-      key: "tunnel/fluent-bit-parsers.conf",
-      forceDestroy: true,
-      source: new pulumi.asset.FileAsset(
+    this.files.push(
+      this.createBucketObject(
+        "fluent-bit.conf",
+        this.fluentbitConf(
+          opensearch.endpoint,
+          "internet-access-events",
+          opensearch.username,
+          opensearch.password
+        )
+      )
+    );
+    this.files.push(
+      this.createBucketObject(
+        "fluent-bit-parsers.conf",
         path.join(__dirname, "fluent-bit-parsers.conf")
-      ),
-    });
-    new aws.s3.BucketObject("tunnelClashConfig", {
-      bucket: this.bucket.id,
-      key: "tunnel/config.yaml",
-      forceDestroy: true,
-      content: this.clashConf(),
-    });
-    new aws.s3.BucketObject("tunnelDockerCompose", {
-      bucket: this.bucket.id,
-      key: "tunnel/docker-compose.yml",
-      forceDestroy: true,
-      source: new pulumi.asset.FileAsset(
+      )
+    );
+    this.files.push(this.createBucketObject("config.yaml", this.clashConf()));
+    this.files.push(
+      this.createBucketObject(
+        "docker-compose.yml",
         path.join(__dirname, "docker-compose.yml")
-      ),
-    });
+      )
+    );
+
     return super.apply();
   }
 
@@ -125,13 +130,19 @@ yum install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 systemctl start docker
 
 CLASH_HOME=/opt/clash
-mkdir $CLASH_HOME && aws s3 cp s3://${
-      this.bucket.id
-    }/tunnel $CLASH_HOME/ --recursive
+mkdir -p $CLASH_HOME
+${this.copyCommand(this.files[0].key)}
+${this.copyCommand(this.files[1].key)}
+${this.copyCommand(this.files[2].key)}
+${this.copyCommand(this.files[3].key)}
 docker compose --project-directory $CLASH_HOME up --no-start
 docker compose --project-directory $CLASH_HOME start fluentbit
 docker compose --project-directory $CLASH_HOME start clash
 `;
+  }
+
+  private copyCommand(key: pulumi.Input<string>): pulumi.Output<string> {
+    return pulumi.interpolate`aws s3 cp s3://${this.bucket.id}/${key} $CLASH_HOME/$(basename ${key})`;
   }
 
   private clashConf(): pulumi.Output<string> {
@@ -152,13 +163,13 @@ rules:
   - MATCH,auto
 `;
   }
-}
-
-function fluentbitConf(
-  logGroup: pulumi.Input<string>,
-  logStream: pulumi.Input<string>
-): pulumi.Output<string> {
-  return pulumi.interpolate`
+  fluentbitConf(
+    host: pulumi.Input<string>,
+    index: pulumi.Input<string>,
+    username: pulumi.Input<string>,
+    password: pulumi.Input<string>
+  ): pulumi.Output<string> {
+    return pulumi.interpolate`
 [SERVICE]
     parsers_file /fluent-bit/etc/fluent-bit-parsers.conf
 
@@ -177,10 +188,19 @@ function fluentbitConf(
     exclude log .+
 
 [OUTPUT]
-    Name cloudwatch_logs
+    Name opensearch
     Match *
-    region ${aws.getRegion().then((r) => r.id)}
-    log_group_name ${logGroup}
-    log_stream_name ${logStream}
+    Host ${host}
+    Port 443
+    HTTP_User ${username}
+    HTTP_Passwd ${password}
+    AWS_Region ${getRegion()}
+    Index ${index}
+    tls On
 `;
+  }
+}
+
+function getRegion(): pulumi.Output<string> {
+  return pulumi.output(aws.getRegion()).apply((r) => r.id);
 }

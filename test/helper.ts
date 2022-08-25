@@ -11,7 +11,10 @@ import promiseRetry from "promise-retry";
 
 export const stackHolder: { stack?: Stack } = {};
 
-export async function applyProgram(program: PulumiFn): Promise<UpResult> {
+export async function applyProgram(
+  program: PulumiFn,
+  stackConfig?: Record<string, string>
+): Promise<UpResult> {
   const stackArgs: InlineProgramArgs = {
     stackName: "test",
     projectName: project.name,
@@ -20,6 +23,11 @@ export async function applyProgram(program: PulumiFn): Promise<UpResult> {
   const stack = await LocalWorkspace.createOrSelectStack(stackArgs);
   stack.setConfig("alicloud:region", { value: "cn-shanghai" });
   stack.setConfig("aws:region", { value: "us-east-1" });
+  if (stackConfig) {
+    for (const k in stackConfig) {
+      stack.setConfig(k, { value: stackConfig[k] });
+    }
+  }
   console.log("Downloading plugins...");
   await stack.workspace.installPlugin("aws", "v5.3.0");
   await stack.workspace.installPlugin("alicloud", "v3.19.0");

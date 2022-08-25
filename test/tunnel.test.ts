@@ -1,8 +1,10 @@
 import * as pulumi from "@pulumi/pulumi";
+import * as aws from "@pulumi/aws";
 import { AlicloudEcsNginxTunnelConstructor } from "../lib/core/tunnel/AlicloudEcsNginxTunnelConstructor";
 import { AlicloudEcsClashRouterConstructor } from "../lib/core/tunnel/AlicloudEcsClashTunnelConstructor";
 import { createSharedResources } from "../lib/core/common";
 import { applyProgram, assertConnectSuccess } from "./helper";
+import { assert } from "chai";
 
 describe("tunnel", function () {
   it("apply nginx tunnel", async function () {
@@ -37,5 +39,15 @@ describe("tunnel", function () {
     });
     const ip = result.outputs["publicIpAddress"].value;
     await assertConnectSuccess(ip, 7890);
+  });
+
+  it("check region name", async function () {
+    const result = await applyProgram(
+      async () => {
+        return { region: (await aws.getRegion()).id };
+      },
+      { "aws:region": "ap-south-1" }
+    );
+    assert("ap-south-1" == result.outputs["region"].value);
   });
 });

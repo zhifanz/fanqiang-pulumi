@@ -13,7 +13,7 @@ services:
       - fluentbit
 
   fluentbit:
-    image: fluent/fluent-bit:1.8
+    image: fluent/fluent-bit:1.9
     volumes:
       - ./fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf
       - ./fluent-bit-parsers.conf:/fluent-bit/etc/fluent-bit-parsers.conf

@@ -8,8 +8,8 @@ import {
 } from "./domain/InfrastructureConstructionService";
 import { createLightsailShadowsocksProxy } from "./core/proxy/LightsailShadowsocksProxy";
 import { ClashClientConfiguration } from "./core/client";
-import { createAlicloudEcsNginxTunnel } from "./core/tunnel/AlicloudEcsNginxTunnelConstructor";
-import { getRouterFactory } from "./core/tunnel/AlicloudEcsClashTunnelConstructor";
+import { createNginxTunnel } from "./core/nginxTunnel";
+import { ClashRouterFactory } from "./core/clashRouter";
 import { EndpointDebugging } from "./domain/EndpointDebugging";
 
 export function apply(): InfrastructureConstructionResult {
@@ -19,7 +19,7 @@ export function apply(): InfrastructureConstructionResult {
   const sharedResources = createSharedResources(stackConfig.require("bucket"));
   let result = undefined;
   let proxyFactory = createLightsailShadowsocksProxy;
-  const vpnClient = new ClashClientConfiguration(sharedResources.bucket);
+  const vpnClient = new ClashClientConfiguration(sharedResources.bucket.bucket);
   const publicKey = stackConfig.get("publicKey");
   let debugging;
   if (publicKey) {
@@ -38,18 +38,18 @@ export function apply(): InfrastructureConstructionResult {
       result = new ModerateInfrastructureConstructionService(
         proxyFactory,
         debugging
-          ? debugging.interceptForwardProxyFactory(createAlicloudEcsNginxTunnel)
-          : createAlicloudEcsNginxTunnel,
+          ? debugging.interceptForwardProxyFactory(createNginxTunnel)
+          : createNginxTunnel,
         vpnClient
       ).constructInfrastructure(encryption, password);
       break;
     case "premium":
-      const routerFactory = getRouterFactory(sharedResources.bucket);
+      const routerFactory = new ClashRouterFactory(sharedResources.bucket);
       result = new PremiumInfrastructureConstructionService(
         proxyFactory,
         debugging
-          ? debugging.interceptRouterFactory(routerFactory)
-          : routerFactory,
+          ? debugging.interceptRouterFactory(routerFactory.createClashRouter)
+          : routerFactory.createClashRouter,
         vpnClient
       ).constructInfrastructure(encryption, password);
       break;

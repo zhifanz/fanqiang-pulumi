@@ -5,7 +5,9 @@ import * as path from "path";
 import * as net from "node:net";
 import yaml from "js-yaml";
 import promiseRetry from "promise-retry";
-import { PulumiFn } from "@pulumi/pulumi/automation";
+import * as pulumi from "@pulumi/pulumi";
+import * as aws from "@pulumi/aws";
+import * as crypto from "node:crypto";
 
 export const DEFAULT_RESOURCE_NAME = "default";
 export const PULUMI_PROJECT_NAME = loadPulumiProjectConfiguration().name;
@@ -61,4 +63,12 @@ export async function waitConnectSuccess(
     },
     { retries: 10, maxRetryTime: timeout, minTimeout: 10 * 1000 }
   );
+}
+
+export function getAwsRegion(): pulumi.Output<string> {
+  return pulumi.output(aws.getRegion()).apply((r) => r.id);
+}
+
+export function randomPassword(size: number) {
+  return crypto.randomBytes(size).toString("base64");
 }

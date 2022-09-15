@@ -1,14 +1,9 @@
-import * as aws from "@pulumi/aws";
-import { DEFAULT_RESOURCE_NAME } from "./utils";
+import { BucketOperations } from "./aws/BucketOperations";
 
 export interface SharedResources {
-  readonly bucket: aws.s3.Bucket;
+  readonly bucket: BucketOperations;
 }
 
 export function createSharedResources(bucketName: string): SharedResources {
-  const bucket = new aws.s3.Bucket(DEFAULT_RESOURCE_NAME, {
-    forceDestroy: true,
-    bucket: bucketName,
-  });
-  return { bucket };
+  return { bucket: new BucketOperations(bucketName) };
 }

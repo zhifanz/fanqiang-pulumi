@@ -6,7 +6,6 @@ import {
   Stack,
   UpResult,
 } from "@pulumi/pulumi/automation";
-import promiseRetry from "promise-retry";
 import { waitConnectSuccess } from "../lib/core/utils";
 
 export const stackHolder: { stack?: Stack } = {};
@@ -36,7 +35,10 @@ export async function applyProgram(
   return stack.up({
     onOutput: console.log,
     onEvent: (event) => {
-      if (event.diagnosticEvent?.severity == "error") {
+      if (
+        event.diagnosticEvent?.severity == "error" ||
+        event.diagnosticEvent?.severity == "info#err"
+      ) {
         throw new Error(event.diagnosticEvent.message);
       }
     },

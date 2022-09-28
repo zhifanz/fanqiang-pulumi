@@ -5,7 +5,11 @@ import _ from "lodash";
 export class CloudServer {
   private readonly securityGroup: alicloud.ecs.SecurityGroup;
   private readonly eip: alicloud.ecs.EipAddress;
-  constructor(cloudInitScript?: pulumi.Input<string>, publicKey?: string) {
+  constructor(
+    cloudInitScript?: pulumi.Input<string>,
+    publicKey?: string,
+    dependsOn?: pulumi.ResourceOptions["dependsOn"]
+  ) {
     const vpc = new alicloud.vpc.Network(DEFAULT_RESOURCE_NAME, {
       cidrBlock: "192.168.0.0/16",
     });
@@ -44,23 +48,27 @@ export class CloudServer {
       policyType: "System",
       roleName: ramRole.id,
     });
-    new alicloud.ecs.Instance(DEFAULT_RESOURCE_NAME, {
-      imageId: "aliyun_2_1903_x64_20G_alibase_20210726.vhd",
-      instanceType: "ecs.t5-lc2m1.nano",
-      securityGroups: [this.securityGroup.id],
-      instanceChargeType: "PostPaid",
-      vswitchId: vSwitch.id,
-      keyName:
-        publicKey &&
-        new alicloud.ecs.EcsKeyPair(DEFAULT_RESOURCE_NAME, {
-          publicKey: publicKey,
-        }).keyPairName,
-      roleName: ramRole.id,
-      spotStrategy: "SpotAsPriceGo",
-      systemDiskCategory: "cloud_efficiency",
-      systemDiskSize: 40,
-      userData: toBase64(this.cloudInitScript(cloudInitScript)),
-    });
+    new alicloud.ecs.Instance(
+      DEFAULT_RESOURCE_NAME,
+      {
+        imageId: "aliyun_2_1903_x64_20G_alibase_20210726.vhd",
+        instanceType: "ecs.t5-lc2m1.nano",
+        securityGroups: [this.securityGroup.id],
+        instanceChargeType: "PostPaid",
+        vswitchId: vSwitch.id,
+        keyName:
+          publicKey &&
+          new alicloud.ecs.EcsKeyPair(DEFAULT_RESOURCE_NAME, {
+            publicKey: publicKey,
+          }).keyPairName,
+        roleName: ramRole.id,
+        spotStrategy: "SpotAsPriceGo",
+        systemDiskCategory: "cloud_efficiency",
+        systemDiskSize: 40,
+        userData: toBase64(this.cloudInitScript(cloudInitScript)),
+      },
+      { dependsOn }
+    );
   }
 
   private cloudInitScript(

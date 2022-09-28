@@ -103,16 +103,13 @@ ${this.startServices()}`;
     files?: pulumi.Input<string>[]
   ): pulumi.Output<string> {
     let result = pulumi.output("docker compose");
-    if (dir && !files) {
-    }
     if (files?.length) {
-      if (dir) {
-        result = pulumi.concat(result, " --file ", dir, "/", files[0]);
-      } else {
-        result = pulumi.concat(result, " --file ", files[0]);
-      }
-      for (let i = 1; i < files.length; ++i) {
-        result = pulumi.concat(result, " --file ", files[i]);
+      for (let i = 0; i < files.length; ++i) {
+        if (dir) {
+          result = pulumi.concat(result, " --file ", dir, "/", files[i]);
+        } else {
+          result = pulumi.concat(result, " --file ", files[i]);
+        }
       }
     } else if (dir) {
       result = pulumi.concat(result, " --project-directory ", dir);

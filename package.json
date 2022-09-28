@@ -2,7 +2,7 @@
   "name": "fanqiang-pulumi",
   "dependencies": {
     "@pulumi/alicloud": "^3.19.0",
-    "@pulumi/aws": "^5.13.0",
+    "@pulumi/aws": "^5.15.0",
     "@pulumi/pulumi": "^3.0.0",
     "@types/js-yaml": "^4.0.5",
     "@types/lodash": "^4.14.182",

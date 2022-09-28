@@ -4,11 +4,11 @@ import { ComponentResource } from "@pulumi/pulumi";
 import { DEFAULT_RESOURCE_NAME } from "../utils";
 
 export class AgentUser extends ComponentResource {
-  private static readonly type = "AgentUser";
+  private static readonly type = "fanqiang:aws:AgentUser";
   private readonly user: aws.iam.User;
   private readonly accessKey: aws.iam.AccessKey;
   private get defaultResourceName(): string {
-    return `${AgentUser.type}-${DEFAULT_RESOURCE_NAME}`;
+    return DEFAULT_RESOURCE_NAME;
   }
   constructor() {
     super(AgentUser.type, DEFAULT_RESOURCE_NAME);

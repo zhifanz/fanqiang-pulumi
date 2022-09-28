@@ -7,7 +7,7 @@ describe("clashRouter", function () {
   it("apply clash tunnel", async function () {
     const result = await applyProgram(async () => {
       const bucketOperations = new BucketOperations("fanqiang-test");
-      const factory = new ClashRouterFactory(bucketOperations, false);
+      const factory = new ClashRouterFactory(bucketOperations);
       return factory.createClashRouter(
         {
           host: pulumi.output("0.0.0.0"),

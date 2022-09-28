@@ -7,7 +7,7 @@ export function createNginxTunnel(
   publicKey?: string
 ): ServiceEndpoints {
   const server = new CloudServer(cloudInitScript(service), publicKey);
-  server.openPort("app", service.port);
+  server.openPort("nginx", service.port);
   return { port: service.port, host: server.publicIpAddress };
 }
 

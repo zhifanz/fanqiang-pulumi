@@ -5,34 +5,40 @@ import { ProxyServer } from "../domain/ProxyServer";
 import { BucketOperations } from "./aws/BucketOperations";
 import { RequestRoutingRuleAnalysis } from "./analysis/RequestRoutingRuleAnalysis";
 import { AgentUser } from "./aws/AgentUser";
-import { randomPassword } from "./utils";
 import { CloudServer } from "./alicloud/CloudServer";
 import { InstanceConfigurer } from "./InstanceConfigurer";
 
 export class ClashRouterFactory {
   constructor(
     readonly bucketOperations: BucketOperations,
-    readonly requireAnalysis: boolean = true
+    readonly analysisProperties?: { username: string; password: string }
   ) {}
   createClashRouter = (
     proxyServer: ProxyServer,
     publickKey?: string
   ): Router => {
+    const dependsOn = [];
     const agentUser = new AgentUser();
-    agentUser.allowAccess(
-      "s3",
-      "s3:*",
-      this.bucketOperations.bucketArn,
-      pulumi.concat(this.bucketOperations.bucketArn, "/*")
+    dependsOn.push(
+      agentUser.allowAccess(
+        "s3",
+        "s3:*",
+        this.bucketOperations.bucketArn,
+        pulumi.concat(this.bucketOperations.bucketArn, "/*")
+      )
     );
     const instanceConfigurer = new InstanceConfigurer();
-    this.bucketOperations.uploadSource(
-      "router/docker-compose.yml",
-      path.join(__dirname, "docker-compose.yml")
+    dependsOn.push(
+      this.bucketOperations.uploadSource(
+        "router/docker-compose.yml",
+        path.join(__dirname, "docker-compose.yml")
+      )
     );
-    this.bucketOperations.uploadContent(
-      "router/config.yaml",
-      clashConf(7890, proxyServer)
+    dependsOn.push(
+      this.bucketOperations.uploadContent(
+        "router/config.yaml",
+        clashConf(7890, proxyServer)
+      )
     );
     instanceConfigurer.configureAwsAccessKey(
       agentUser.accessKeyId,
@@ -45,21 +51,22 @@ export class ClashRouterFactory {
     const dc = instanceConfigurer.configureDockerCompose("/opt/clash");
     dc.addFile("docker-compose.yml");
     dc.addService("clash");
-    if (this.requireAnalysis) {
+    if (this.analysisProperties) {
       const analysisResources = new RequestRoutingRuleAnalysis(
         agentUser,
         this.bucketOperations,
-        "default",
         "fanqiang",
-        "admin",
-        randomPassword(16)
+        this.analysisProperties.username,
+        this.analysisProperties.password
       );
       analysisResources.configureInstance(instanceConfigurer);
+      dependsOn.push(analysisResources);
     }
 
     const server = new CloudServer(
       instanceConfigurer.toShellScript(),
-      publickKey
+      publickKey,
+      dependsOn
     );
     server.openPort("clash", 7890);
     return {

@@ -70,5 +70,5 @@ export function getAwsRegion(): pulumi.Output<string> {
 }
 
 export function randomPassword(size: number) {
-  return crypto.randomBytes(size).toString("base64");
+  return crypto.randomBytes(size).toString("hex");
 }

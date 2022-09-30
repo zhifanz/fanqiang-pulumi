@@ -1,7 +1,6 @@
-import { AgentUser } from "./aws/AgentUser";
 import * as pulumi from "@pulumi/pulumi";
 
-export class InstanceConfigurer {
+export class InstanceProvision {
   private dockerCompose?: DockerCompose;
   private s3Copy?: { key: pulumi.Input<string>; dir: pulumi.Input<string> };
   private awsAccessKey?: {

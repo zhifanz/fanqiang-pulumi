@@ -6,7 +6,7 @@ import { BucketOperations } from "./aws/BucketOperations";
 import { RequestRoutingRuleAnalysis } from "./analysis/RequestRoutingRuleAnalysis";
 import { AgentUser } from "./aws/AgentUser";
 import { CloudServer } from "./alicloud/CloudServer";
-import { InstanceConfigurer } from "./InstanceConfigurer";
+import { InstanceProvision } from "./InstanceProvision";
 
 export class ClashRouterFactory {
   constructor(
@@ -27,7 +27,7 @@ export class ClashRouterFactory {
         pulumi.concat(this.bucketOperations.bucketArn, "/*")
       )
     );
-    const instanceConfigurer = new InstanceConfigurer();
+    const instanceConfigurer = new InstanceProvision();
     dependsOn.push(
       this.bucketOperations.uploadSource(
         "router/docker-compose.yml",

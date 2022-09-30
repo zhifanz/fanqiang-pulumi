@@ -1,5 +1,5 @@
 import { assert } from "chai";
-import { InstanceConfigurer } from "../lib/core/InstanceConfigurer";
+import { InstanceProvision } from "../lib/core/InstanceProvision";
 import { applyProgram } from "./helper";
 
 const expected1 = `
@@ -36,7 +36,7 @@ docker compose --file /opt/app/dc.yml --file dc-other.yml start bar
 describe("InstanceConfigurer", function () {
   it("configure aws access key", async function () {
     const result = await applyProgram(async () => {
-      const shell = new InstanceConfigurer();
+      const shell = new InstanceProvision();
       shell.configureAwsAccessKey("foo", "bar");
       return { content: shell.toShellScript() };
     });
@@ -44,7 +44,7 @@ describe("InstanceConfigurer", function () {
   });
   it("aws s3 copy", async function () {
     const result = await applyProgram(async () => {
-      const shell = new InstanceConfigurer();
+      const shell = new InstanceProvision();
       shell.s3CopyDir("path/to/content", "/tmp/foo");
       return { content: shell.toShellScript() };
     });
@@ -52,7 +52,7 @@ describe("InstanceConfigurer", function () {
   });
   it("docker compose service", async function () {
     const result = await applyProgram(async () => {
-      const shell = new InstanceConfigurer();
+      const shell = new InstanceProvision();
       const dc = shell.configureDockerCompose("/opt/app");
       dc.addFile("dc.yml");
       dc.addFile("dc-other.yml");

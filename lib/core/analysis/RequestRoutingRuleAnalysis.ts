@@ -2,7 +2,7 @@ import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
 import { DEFAULT_RESOURCE_NAME } from "../utils";
 import _ from "lodash";
-import { InstanceConfigurer } from "../InstanceConfigurer";
+import { InstanceProvision } from "../InstanceProvision";
 import { BucketOperations } from "../aws/BucketOperations";
 import * as path from "node:path";
 import { AgentUser } from "../aws/AgentUser";
@@ -116,7 +116,7 @@ export class RequestRoutingRuleAnalysis extends pulumi.ComponentResource {
     return firehose;
   }
 
-  configureInstance(configurer: InstanceConfigurer): void {
+  configureInstance(configurer: InstanceProvision): void {
     const dc = configurer.getDockerCompose();
     dc.addFile("docker-compose.fluentbit.yml");
     dc.insertService("fluentbit", 0);

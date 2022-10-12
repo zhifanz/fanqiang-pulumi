@@ -15,7 +15,6 @@ import { EndpointDebugging } from "./domain/EndpointDebugging";
 export function apply(): InfrastructureConstructionResult {
   const stackConfig = new pulumi.Config();
   const encryption = stackConfig.require("encryption");
-  const username = stackConfig.require("username");
   const password = stackConfig.require("password");
   const sharedResources = createSharedResources(stackConfig.require("bucket"));
   let result = undefined;
@@ -46,7 +45,7 @@ export function apply(): InfrastructureConstructionResult {
       break;
     case "premium":
       const routerFactory = new ClashRouterFactory(sharedResources.bucket, {
-        username,
+        username: stackConfig.require("username"),
         password,
       });
       result = new PremiumInfrastructureConstructionService(

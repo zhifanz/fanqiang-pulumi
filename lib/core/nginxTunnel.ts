@@ -1,20 +1,26 @@
 import * as pulumi from "@pulumi/pulumi";
-import { ServiceEndpoints } from "../domain/ServiceEndpoints";
+import { Host } from "../domain/Host";
 import { CloudServer } from "./alicloud/CloudServer";
 
 export function createNginxTunnel(
-  service: ServiceEndpoints,
-  publicKey?: string
-): ServiceEndpoints {
-  const server = new CloudServer(cloudInitScript(service), publicKey);
-  server.openPort("nginx", service.port);
-  return { port: service.port, host: server.publicIpAddress };
+  upstreamService: Host,
+  port: number,
+  ...publicKeys: string[]
+): Host {
+  return new CloudServer(
+    publicKeys.length ? { ssh: 22, nginx: port } : { nginx: port },
+    {
+      provisionInstance: (cloudinit) => {
+        publicKeys.forEach(cloudinit.addPublicKey);
+        cloudinit.ensureInternetAccess();
+        cloudinit.addCommand(scripts.setupNginx(upstreamService, port));
+      },
+    }
+  );
 }
 
-function cloudInitScript(
-  upstreamService: ServiceEndpoints
-): pulumi.Output<string> {
-  return pulumi.interpolate`
+const scripts = {
+  setupNginx: (upstreamService: Host, port: number) => pulumi.interpolate`
 yum install -y nginx nginx-all-modules
 cat > /etc/nginx/nginx.conf <<EOF
 user nginx;
@@ -27,11 +33,11 @@ events {
 }
 stream {
   server {
-    listen ${upstreamService.port};
-    proxy_pass ${upstreamService.host}:${upstreamService.port};
+    listen ${port};
+    proxy_pass ${upstreamService.ipAddress}:${port};
   }
 }
 EOF
 systemctl start nginx
-`;
-}
+`,
+} as const;

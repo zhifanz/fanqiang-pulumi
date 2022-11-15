@@ -6,15 +6,13 @@ import { createNginxTunnel } from "../lib/core/nginxTunnel";
 
 describe("nginxTunnel", function () {
   it("apply nginx tunnel", async function () {
-    const result = await applyProgram(async () =>
-      createNginxTunnel(
-        {
-          host: pulumi.output("0.0.0.0"),
-          port: pulumi.output(8388),
-        },
-        process.env["PUBLIC_KEY"]
-      )
-    );
+    const result = await applyProgram(async () => {
+      const host = createNginxTunnel(
+        { ipAddress: pulumi.output("0.0.0.0") },
+        8388
+      );
+      return { host: host.ipAddress };
+    });
     const ip = result.outputs["host"].value;
     await assertConnectSuccess(ip, 8388);
   });

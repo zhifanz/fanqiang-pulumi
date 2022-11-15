@@ -1,8 +1,7 @@
 import * as pulumi from "@pulumi/pulumi";
-import { ProxyServer } from "./ProxyServer";
-import { Router } from "./Router";
+import { ProxyConnectionProperties, ServiceEndpoint } from "./Configuration";
 
 export interface VpnClientConfigurationTemplate {
-  basic(proxyServer: ProxyServer): pulumi.Output<string>;
-  rules(router: Router): pulumi.Output<string>;
+  basic(props: ProxyConnectionProperties): pulumi.Output<string>;
+  rules(router: ServiceEndpoint): pulumi.Output<string>;
 }

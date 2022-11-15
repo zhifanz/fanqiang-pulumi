@@ -3,19 +3,29 @@ import * as aws from "@pulumi/aws";
 import * as path from "node:path";
 import { DEFAULT_RESOURCE_NAME } from "../utils";
 
-type Options = { parent?: pulumi.Resource };
+type Options = { parent?: pulumi.Resource; publicRead?: boolean };
 
 export class BucketOperations {
-  readonly bucket: aws.s3.Bucket;
-  constructor(bucketName: string) {
+  private readonly bucket: aws.s3.Bucket;
+  constructor(readonly bucketName: string) {
     this.bucket = new aws.s3.Bucket(DEFAULT_RESOURCE_NAME, {
       forceDestroy: true,
       bucket: bucketName,
     });
   }
-  get bucketName(): pulumi.Output<string> {
-    return this.bucket.bucket;
+
+  getUri(path: string): string {
+    return `s3://${this.bucketName}/${path}`;
   }
+
+  getUrl(path: pulumi.Input<string>): pulumi.Output<string> {
+    return pulumi.interpolate`https://${this.bucketDomainName}/${path}`;
+  }
+
+  get bucketDomainName(): pulumi.Output<string> {
+    return this.bucket.bucketDomainName;
+  }
+
   get bucketArn(): pulumi.Output<string> {
     return this.bucket.arn;
   }
@@ -30,7 +40,7 @@ export class BucketOperations {
       (args) => {
         args.source = new pulumi.asset.FileAsset(filePath);
       },
-      options.parent
+      options
     );
   }
 
@@ -44,21 +54,26 @@ export class BucketOperations {
       (args) => {
         args.content = content;
       },
-      options.parent
+      options
     );
   }
 
   private upload(
     key: string,
     extendArgs: (basicArgs: aws.s3.BucketObjectArgs) => void,
-    parent?: pulumi.Resource
+    opts?: Options
   ): aws.s3.BucketObject {
     const args: aws.s3.BucketObjectArgs = {
       bucket: this.bucket.id,
       key,
       forceDestroy: true,
     };
+    if (opts?.publicRead) {
+      args.acl = "public-read";
+    }
     extendArgs(args);
-    return new aws.s3.BucketObject(path.basename(key), args, { parent });
+    return new aws.s3.BucketObject(path.basename(key), args, {
+      parent: opts?.parent,
+    });
   }
 }

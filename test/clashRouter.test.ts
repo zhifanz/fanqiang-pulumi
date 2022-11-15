@@ -1,24 +1,38 @@
 import * as pulumi from "@pulumi/pulumi";
-import { applyProgram, assertConnectSuccess } from "./helper";
-import { ClashRouterFactory } from "../lib/core/clashRouter";
+import * as yaml from "yaml";
+import { applyProgram } from "./helper";
+import { ClashRouterFactory } from "../lib/core/router/clashRouter";
 import { BucketOperations } from "../lib/core/aws/BucketOperations";
+import { waitConnectSuccess } from "../lib/core/utils";
+import { assert } from "chai";
 
-describe("clashRouter", function () {
-  it("apply clash tunnel", async function () {
+describe("nginxTunnel", function () {
+  it("apply clash router", async function () {
     const result = await applyProgram(async () => {
-      const bucketOperations = new BucketOperations("fanqiang-test");
-      const factory = new ClashRouterFactory(bucketOperations);
-      return factory.createClashRouter(
+      const host = new ClashRouterFactory(
+        new BucketOperations("fanqiang-test")
+      ).createClashRouter(
         {
-          host: pulumi.output("0.0.0.0"),
-          port: pulumi.output(8388),
-          encryption: pulumi.output("aes-256-gcm"),
-          password: pulumi.output("foo"),
+          ipAddress: pulumi.output("8.8.8.8"),
+          port: 8388,
+          encryption: "aes-256-gcm",
+          password: "Secret#1",
         },
+        8388,
         process.env["PUBLIC_KEY"]
+          ? {
+              publicKeys: [process.env["PUBLIC_KEY"]],
+            }
+          : undefined
       );
+      return { host: host.ipAddress };
     });
     const ip = result.outputs["host"].value;
-    await assertConnectSuccess(ip, 7890);
+    await waitConnectSuccess(ip, 8388, 60 * 1000);
+  });
+
+  it("yaml stringify", function () {
+    const result = yaml.stringify({ payload: ["noop"] });
+    assert.equal(result, "payload:\n  - noop\n");
   });
 });

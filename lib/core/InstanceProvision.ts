@@ -1,118 +1,152 @@
 import * as pulumi from "@pulumi/pulumi";
+import path from "path";
+
+export type ProvisionInstanceFunction = (
+  instanceProvision: InstanceProvision
+) => void;
 
 export class InstanceProvision {
-  private dockerCompose?: DockerCompose;
-  private s3Copy?: { key: pulumi.Input<string>; dir: pulumi.Input<string> };
-  private awsAccessKey?: {
-    id: pulumi.Input<string>;
-    secret: pulumi.Input<string>;
+  private localCommands: pulumi.Input<string>[] = [];
+  private commands: pulumi.Input<string>[] = [];
+  private publicKeys: pulumi.Input<string>[] = [];
+  private dirs: string[] = [];
+  private requireInternet: boolean = false;
+  private dockerCompose?: { files: string[] };
+  private aws?: {
+    accessKey?: {
+      id: pulumi.Input<string>;
+      secret: pulumi.Input<string>;
+    };
+    s3Copies?: { src: pulumi.Input<string>; dest: string }[];
   };
+  constructor(private shebang: boolean = false) {}
 
-  configureAwsAccessKey(
+  addCommand(command: pulumi.Input<string>, local: boolean = false): void {
+    (local ? this.localCommands : this.commands).push(command);
+  }
+
+  ensureInternetAccess() {
+    this.requireInternet = true;
+  }
+
+  addPublicKey(publicKey: pulumi.Input<string>): void {
+    if (!this.publicKeys.includes(publicKey)) {
+      this.publicKeys.push(publicKey);
+    }
+  }
+  mkdir(dir: string): void {
+    if (this.dirs.includes(dir)) {
+      return;
+    }
+    for (const d of this.dirs) {
+      if (d.startsWith(dir)) {
+        return;
+      }
+    }
+    this.dirs.push(dir);
+  }
+
+  configureAccessKey(
     id: pulumi.Input<string>,
     secret: pulumi.Input<string>
   ): void {
-    this.awsAccessKey = { id, secret };
-  }
-
-  s3CopyDir(key: pulumi.Input<string>, dir: pulumi.Input<string>): void {
-    this.s3Copy = { key, dir };
-  }
-
-  configureDockerCompose(dir: pulumi.Input<string>): DockerCompose {
-    this.dockerCompose = new DockerCompose(dir);
-    return this.dockerCompose;
-  }
-
-  getDockerCompose(): DockerCompose {
-    if (this.dockerCompose) {
-      return this.dockerCompose;
+    if (this.aws) {
+      this.aws.accessKey = { id, secret };
+    } else {
+      this.aws = { accessKey: { id, secret } };
     }
-    throw new Error("Docker compose is not configured!");
   }
 
-  toShellScript(): pulumi.Output<string> {
-    let result = pulumi.output("");
-    if (this.awsAccessKey || this.s3Copy) {
+  copyS3Dir(src: pulumi.Input<string>, dest: string): void {
+    this.mkdir(path.dirname(dest));
+    if (this.aws) {
+      if (this.aws.s3Copies) {
+        this.aws.s3Copies.push({ src, dest });
+      } else {
+        this.aws.s3Copies = [{ src, dest }];
+      }
+    } else {
+      this.aws = { s3Copies: [{ src, dest }] };
+    }
+  }
+
+  addDockerComposeFile(file: string, index?: number): void {
+    if (this.dockerCompose) {
+      if (index == undefined) {
+        this.dockerCompose.files.push(file);
+      } else {
+        this.dockerCompose.files.splice(index, 0, file);
+      }
+    } else {
+      this.dockerCompose = { files: [file] };
+    }
+  }
+
+  toShellScript(): pulumi.Output<string> | string {
+    let result: pulumi.Output<string> | string = this.shebang
+      ? "#!/bin/bash\n\n"
+      : "";
+    if (this.dirs.length) {
+      result = result + "mkdir -p";
+      this.dirs.forEach((dir) => (result = result + ` ${dir}`));
+      result = result + "\n";
+    }
+    if (this.publicKeys.length) {
+      result =
+        result +
+        `if [ ! -d ~/.ssh ]; then mkdir ~/.ssh; fi
+if [ ! -f ~/.ssh/authorized_keys ];
+then
+touch ~/.ssh/authorized_keys
+chmod 700 ~/.ssh/authorized_keys
+fi
+`;
+      this.publicKeys.forEach(
+        (pk) =>
+          (result = pulumi.interpolate`${result}echo "${pk}" >> ~/.ssh/authorized_keys\n`)
+      );
+    }
+    this.localCommands.forEach(
+      (c) => (result = pulumi.concat(result, c, "\n"))
+    );
+    if (this.requireInternet) {
+      result = pulumi.interpolate`${result}until ping -c1 baidu.com &>/dev/null ; do sleep 1 ; done\n`;
+    }
+    if (this.aws) {
       result = pulumi.interpolate`${result}
-mkdir ~/downloads && cd ~/downloads
-curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-unzip awscliv2.zip
-./aws/install
-cd ~ && rm -rf ~/downloads`;
-      if (this.awsAccessKey) {
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o ~/awscliv2.zip
+unzip ~/awscliv2.zip -d ~
+~/aws/install
+rm -rf ~/aws
+rm -f ~/awscliv2.zip
+`;
+      if (this.aws.accessKey) {
         result = pulumi.interpolate`${result}
-aws configure set aws_access_key_id ${this.awsAccessKey.id}
-aws configure set aws_secret_access_key ${this.awsAccessKey.secret}`;
+aws configure set aws_access_key_id "${this.aws.accessKey.id}"
+aws configure set aws_secret_access_key "${this.aws.accessKey.secret}"
+`;
       }
-      if (this.s3Copy) {
-        result = pulumi.interpolate`${result}
-mkdir -p ${this.s3Copy.dir}
-aws s3 cp s3://${this.s3Copy.key} ${this.s3Copy.dir} --recursive`;
+      if (this.aws.s3Copies) {
+        this.aws.s3Copies.forEach(
+          (cp) =>
+            (result = pulumi.interpolate`${result}aws s3 cp ${cp.src} ${cp.dest} --recursive\n`)
+        );
       }
     }
     if (this.dockerCompose) {
-      result = pulumi.concat(result, this.dockerCompose.toShellScript());
-    }
-    return result;
-  }
-}
-class DockerCompose {
-  readonly files: pulumi.Input<string>[] = [];
-  readonly services: pulumi.Input<string>[] = [];
-  constructor(readonly dir: pulumi.Input<string>) {}
-  addFile(file: pulumi.Input<string>) {
-    this.files.push(file);
-  }
-  addService(service: pulumi.Input<string>) {
-    this.services.push(service);
-  }
-  insertService(service: pulumi.Input<string>, index: number) {
-    this.services.splice(index, 0, service);
-  }
-
-  toShellScript(): pulumi.Output<string> {
-    return pulumi.interpolate`
+      result = pulumi.interpolate`${result}
 yum install -y yum-utils
-yum-config-manager \
-    --add-repo \
-    https://download.docker.com/linux/centos/docker-ce.repo
+yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
 yum install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 systemctl start docker
-sleep 5
-${this.startServices()}`;
-  }
-  private startServices() {
-    let result = pulumi.concat(
-      this.concatCommonOptions(this.dir, this.files),
-      " up --no-start\n"
-    );
-    this.services.forEach(
-      (s) =>
-        (result = pulumi.concat(
-          result,
-          this.concatCommonOptions(this.dir, this.files),
-          ` start ${s}\n`
-        ))
-    );
-    return result;
-  }
-  private concatCommonOptions(
-    dir?: pulumi.Input<string>,
-    files?: pulumi.Input<string>[]
-  ): pulumi.Output<string> {
-    let result = pulumi.output("docker compose");
-    if (files?.length) {
-      for (let i = 0; i < files.length; ++i) {
-        if (dir) {
-          result = pulumi.concat(result, " --file ", dir, "/", files[i]);
-        } else {
-          result = pulumi.concat(result, " --file ", files[i]);
-        }
-      }
-    } else if (dir) {
-      result = pulumi.concat(result, " --project-directory ", dir);
+until [ "$(systemctl is-active docker)" == "active" ] ; do sleep 1 ; done
+docker compose`;
+      this.dockerCompose.files.forEach(
+        (f) => (result = pulumi.interpolate`${result} --file ${f}`)
+      );
+      result = pulumi.concat(result, " up --detach\n");
     }
+    this.commands.forEach((c) => (result = pulumi.concat(result, c, "\n")));
     return result;
   }
 }

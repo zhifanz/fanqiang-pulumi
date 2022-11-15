@@ -5,7 +5,8 @@
     "pretty": true,
     "composite": true,
     "declaration": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "experimentalDecorators": true
   },
   "files": ["index.ts", "package.json"],
   "include": ["lib/**/*"]

@@ -5,7 +5,7 @@ describe("CloudServer", () => {
     assert.equal(foo("hi"), "hi");
     assert.equal(foo(""), "");
     assert.equal(foo(), "");
-    assert.isUndefined(foo(undefined));
+    assert.equal(foo(undefined), "");
   });
 });
 

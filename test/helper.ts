@@ -20,11 +20,11 @@ export async function applyProgram(
     program,
   };
   const stack = await LocalWorkspace.createOrSelectStack(stackArgs);
-  stack.setConfig("alicloud:region", { value: "cn-shanghai" });
-  stack.setConfig("aws:region", { value: "us-east-1" });
+  await stack.setConfig("alicloud:region", { value: "cn-shanghai" });
+  await stack.setConfig("aws:region", { value: "us-east-1" });
   if (stackConfig) {
     for (const k in stackConfig) {
-      stack.setConfig(k, { value: stackConfig[k] });
+      await stack.setConfig(k, { value: stackConfig[k] });
     }
   }
   console.log("Downloading plugins...");

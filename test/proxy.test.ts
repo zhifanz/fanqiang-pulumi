@@ -1,17 +1,16 @@
 import { applyProgram, assertConnectSuccess } from "./helper";
-import { LightsailShadowsocksProxy } from "../lib/core/proxy/LightsailShadowsocksProxy";
+import { createShadowsocksServer } from "../lib/core/shadowsocksServer";
 
 describe("proxy", () => {
   describe("shadowsocks", () => {
     it("checking proxy port open", async () => {
       const result = await applyProgram(async () => {
-        const component = new LightsailShadowsocksProxy(
-          "test",
-          8388,
-          "aes-256-gcm",
-          "foo"
-        );
-        return { host: component.host };
+        const component = createShadowsocksServer({
+          password: "test",
+          port: 8388,
+          encryption: "aes-256-gcm",
+        });
+        return { host: component.ipAddress };
       });
       const ip = result.outputs["host"].value;
 

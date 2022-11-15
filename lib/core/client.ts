@@ -1,38 +1,24 @@
 import * as pulumi from "@pulumi/pulumi";
-import * as aws from "@pulumi/aws";
 import { VpnClientConfigurationTemplate } from "../domain/VpnClientConfigurationTemplate";
-import { ProxyServer } from "../domain/ProxyServer";
-import { Router } from "../domain/Router";
+import {
+  ProxyConnectionProperties,
+  ServiceEndpoint,
+} from "../domain/Configuration";
 
 export class ClashClientConfiguration
   implements VpnClientConfigurationTemplate
 {
-  constructor(readonly bucket: aws.s3.Bucket) {}
-  basic(proxyServer: ProxyServer): pulumi.Output<string> {
-    return this.generateURL(basicConfiguration(proxyServer));
+  basic(props: ProxyConnectionProperties): pulumi.Output<string> {
+    return basicConfiguration(props);
   }
-  rules(router: Router): pulumi.Output<string> {
-    return this.generateURL(routerConfiguration(router));
-  }
-
-  private generateURL(content: pulumi.Output<string>): pulumi.Output<string> {
-    const obj = new aws.s3.BucketObject("clashConfiguration", {
-      bucket: this.bucket.id,
-      key: "clash/config.yaml",
-      forceDestroy: true,
-      content: content,
-      acl: "public-read",
-    });
-    return pulumi.concat(
-      "https://",
-      this.bucket.bucketDomainName,
-      "/",
-      obj.key
-    );
+  rules(router: ServiceEndpoint): pulumi.Output<string> {
+    return routerConfiguration(router);
   }
 }
 
-function basicConfiguration(params: ProxyServer): pulumi.Output<string> {
+function basicConfiguration(
+  props: ProxyConnectionProperties
+): pulumi.Output<string> {
   return pulumi.interpolate`
 mixed-port: 7890
 mode: rule
@@ -53,17 +39,17 @@ dns:
 proxies:
   - name: auto
     type: ss
-    server: ${params.host}
-    port: ${params.port}
-    cipher: ${params.encryption}
-    password: ${params.password}
+    server: ${props.ipAddress}
+    port: ${props.port}
+    cipher: ${props.encryption}
+    password: ${props.password}
 rules:
   - GEOIP,CN,DIRECT
   - MATCH,auto
 `;
 }
 
-function routerConfiguration(params: Router): pulumi.Output<string> {
+function routerConfiguration(router: ServiceEndpoint): pulumi.Output<string> {
   return pulumi.interpolate`
 mixed-port: 7890
 mode: rule
@@ -83,9 +69,9 @@ dns:
     - tls://dns.rubyfish.cn:853
 proxies:
   - name: auto
-    type: ${params.protocol}
-    server: ${params.host}
-    port: ${params.port}
+    type: socks5
+    server: ${router.ipAddress}
+    port: ${router.port}
 rules:
   - MATCH,auto  
 `;

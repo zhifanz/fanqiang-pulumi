@@ -1,0 +1,61 @@
+---
+- name: Setup clash router
+  hosts: all
+  become: true
+  tasks:
+    - name: Wait for host available
+      ansible.builtin.wait_for_connection:
+    - name: Install python dependencies
+      ansible.builtin.pip:
+        name: backports.ssl-match-hostname
+    - name: Create clash app home directory
+      ansible.builtin.file:
+        path: /opt/clash
+        state: directory
+        mode: "0755"
+    - name: Copy artifacts
+      ansible.builtin.template:
+        src: "{{ item }}"
+        dest: "/opt/clash/{{ item }}"
+        mode: 0644
+      loop:
+        - clash-config.yml.j2
+        - fluent-bit.conf
+        - fluent-bit-parsers.conf
+    - name: Add docker yum repository
+      ansible.builtin.command: yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+      register: addrepo
+      changed_when: addrepo.rc == 0
+    - name: Install docker
+      ansible.builtin.yum:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-compose-plugin
+        state: present
+    - name: Start docker service
+      ansible.builtin.service:
+        enabled: yes
+        name: docker
+        state: started
+    - name: Start fluentbit
+      community.docker.docker_container:
+        name: fluentbit
+        image: fluent/fluent-bit:1.9
+        keep_volumes: false
+        network_mode: host
+        restart_policy: always
+        volumes:
+          - /opt/clash/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf
+          - /opt/clash/fluent-bit-parsers.conf:/fluent-bit/etc/fluent-bit-parsers.conf
+    - name: Start clash
+      community.docker.docker_container:
+        name: clash
+        image: dreamacro/clash-premium
+        keep_volumes: false
+        network_mode: host
+        restart_policy: always
+        volumes:
+          - /opt/clash/clash-config.yml.j2:/root/.config/clash/config.yaml
+        log_driver: fluentd

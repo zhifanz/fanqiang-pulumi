@@ -1,0 +1,47 @@
+mixed-port: {{ proxy.props.port }}
+mode: rule
+allow-lan: true
+bind-address: "*"
+proxies:
+  - name: auto
+    type: ss
+    server: {{ proxy.hosts.default }}
+    port: {{ proxy.props.port }}
+    cipher: {{ proxy.props.encryption }}
+    password: {{ proxy.props.password }}
+{% if "extra" in proxy.hosts %}
+{% for name, host in proxy.hosts.extra.items() %}
+  - name: {{name}}
+    type: ss
+    server: {{host}}
+    port: {{ proxy.props.port }}
+    cipher: {{ proxy.props.encryption }}
+    password: {{ proxy.props.password }}    
+{% endfor %}
+{% endif %}
+rule-providers:
+  domestic:
+    type: "http"
+    behavior: "domain"
+    path: domestic-domain.yaml
+    url: {{link.domestic}}
+    interval: 300
+{% if "extra" in proxy.hosts %}
+{% for name in proxy.hosts.extra %}
+  {{name}}:
+    type: "http"
+    behavior: "domain"
+    path: {{name}}-domain.yaml
+    url: {{link.extra[name]}}
+    interval: 300
+{% endfor %}
+{% endif %}
+rules:
+  - RULE-SET,domestic,DIRECT
+{% if "extra" in proxy.hosts %}
+{% for name in proxy.hosts.extra %}
+  - RULE-SET,{{name}},{{name}}
+{% endfor %}
+{% endif %}
+  - GEOIP,CN,DIRECT
+  - MATCH,auto

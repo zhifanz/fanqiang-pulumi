@@ -72,3 +72,7 @@ export function getAwsRegion(): pulumi.Output<string> {
 export function randomPassword(size: number) {
   return crypto.randomBytes(size).toString("hex");
 }
+
+export function asCloudConfig(data: any): string {
+  return "#cloud-config\n\n" + yaml.dump(data);
+}

@@ -1,0 +1,26 @@
+---
+- name: Setup shadowsocks
+  hosts: all
+  become: true
+  tasks:
+    - name: Wait for host available
+      ansible.builtin.wait_for_connection:
+    - name: Add public keys
+      ansible.posix.authorized_key:
+        key: "{{ item }}"
+        manage_dir: true
+      loop: "{{ publicKeys }}"
+    - name: Create shadowsocks home directory
+      ansible.builtin.file:
+        path: /opt/shadowsocks
+        state: directory
+        mode: "0755"
+    - name: Download shadowsocks binary
+      ansible.builtin.unarchive:
+        dest: /opt/shadowsocks
+        remote_src: true
+        src: https://github.com/shadowsocks/shadowsocks-rust/releases/download/v1.11.1/shadowsocks-v1.11.1.x86_64-unknown-linux-gnu.tar.xz
+    - name: Start shadowsocks server
+      ansible.builtin.command: /opt/shadowsocks/ssserver -s "[::]:{{servicePort}}" -m "{{encryption}}" -k "{{password}}" -d
+      register: start
+      changed_when: start.rc == 0

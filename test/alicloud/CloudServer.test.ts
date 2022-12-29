@@ -1,4 +1,7 @@
 import { assert } from "chai";
+import { CloudServer } from "../../lib/core/alicloud/CloudServer";
+import { asCloudConfig } from "../../lib/core/utils";
+import { applyProgram, assertConnectSuccess } from "../helper";
 
 describe("CloudServer", () => {
   it("return default value when parameter is undefined", function () {
@@ -6,6 +9,20 @@ describe("CloudServer", () => {
     assert.equal(foo(""), "");
     assert.equal(foo(), "");
     assert.equal(foo(undefined), "");
+  });
+  it("successfully setup public keys", async function () {
+    const result = await applyProgram(async () => {
+      const server = new CloudServer(
+        { ssh: 22 },
+        {
+          userData: asCloudConfig({
+            ssh_authorized_keys: [process.env["PUBLIC_KEY"]],
+          }),
+        }
+      );
+      return { host: server.ipAddress };
+    });
+    assertConnectSuccess(result.outputs["host"].value, 22);
   });
 });
 

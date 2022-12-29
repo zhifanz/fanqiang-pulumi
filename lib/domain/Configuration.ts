@@ -1,14 +1,4 @@
-import {
-  ForwardProxyFactory,
-  ProxyServerFactory,
-  RouterFactory,
-} from "./Factories";
-import { Host } from "./Host";
-import {
-  AnalyzerConstructFunction,
-  InternetAccessEventRepository,
-} from "./RuleAnalyzer";
-import { VpnClientConfigurationTemplate } from "./VpnClientConfigurationTemplate";
+import * as pulumi from "@pulumi/pulumi";
 
 export type ProxyRegion =
   | "us-east-1"
@@ -26,34 +16,7 @@ export type ProxyRegion =
   | "eu-west-3"
   | "eu-north-1";
 
-export type Encryption =
-  | "plain"
-  | "aes-128-gcm"
-  | "aes-256-gcm"
-  | "chacha20-ietf-poly1305";
-
-export interface ProxyProperties {
-  encryption: Encryption;
-  password: string;
-  port: number;
-}
-export type ProxyConnectionProperties = ServiceEndpoint & {
-  encryption: Encryption;
-  password: string;
-};
+export type Host = { ipAddress: pulumi.Output<string> };
 export type ServiceEndpoint = Host & {
   port: number;
 };
-export type CloudObjectPath = string;
-export interface Configuration extends ProxyProperties {
-  proxyServerFactory: ProxyServerFactory;
-  intermediate?:
-    | ForwardProxyFactory
-    | {
-        createEventRepo: () => InternetAccessEventRepository;
-        createAnalyzer: AnalyzerConstructFunction;
-        routerFactory: RouterFactory;
-        additionalProxyRegions?: ProxyRegion[];
-      };
-  vpnClientConfigurationTemplate: VpnClientConfigurationTemplate;
-}

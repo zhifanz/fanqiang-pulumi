@@ -135,3 +135,5 @@ dist
 # pulumi
 pulumi.*.yaml
 pulumi.*.yaml.*
+Pulumi.*.yaml
+Pulumi.*.yaml.*

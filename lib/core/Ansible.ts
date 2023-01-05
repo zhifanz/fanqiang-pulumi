@@ -1,19 +1,19 @@
 import { local } from "@pulumi/command";
 import * as pulumi from "@pulumi/pulumi";
-import * as fs from "node:fs";
-import * as path from "node:path";
-import * as os from "node:os";
-import { KeyPairGetFunc } from "./KeyPair";
+import * as fs from "node:fs"
+import * as path from "node:path"
+import * as os from "node:os"
+import { GetKeyPairFunc } from "./ssh";
 
 export class Ansible {
   readonly publicKey: string;
   private readonly keyFile?: string;
-  constructor(getKeyPair: KeyPairGetFunc) {
-    let pk = SshUtils.loadDefaultPublicKey();
+  constructor(keyPairFactory: GetKeyPairFunc) {
+    let pk = loadDefaultPublicKey()
     if (!pk) {
-      const keyPair = getKeyPair();
-      pk = keyPair.publicKey;
-      this.keyFile = SshUtils.savePrivateKey(keyPair.privateKey);
+      const keyPair = keyPairFactory()
+      pk = keyPair.publicKey
+      this.keyFile = keyPair.privateKeyFile
     }
     this.publicKey = pk;
   }
@@ -55,28 +55,22 @@ export class Ansible {
   }
 }
 
-class SshUtils {
-  private static configDir(): string {
-    return path.join(os.homedir(), ".ssh");
+function loadDefaultPublicKey(): string | undefined {
+  const dir = path.join(os.homedir(), ".ssh")
+  if (!fs.existsSync(dir)) {
+    return undefined
   }
-
-  static savePrivateKey(key: string): string {
-    const keyFile = path.join(this.configDir(), "id_ed25519.fangqiang.pem");
-    fs.writeFileSync(keyFile, key, { encoding: "utf8" });
-    return keyFile;
+  const pubs = fs
+    .readdirSync(dir, { encoding: "utf8", withFileTypes: true })
+    .filter(
+      (d) => d.isFile() && ["id_rsa.pub", "id_ed25519.pub"].includes(d.name)
+    );
+  if (!pubs.length) {
+    return undefined;
   }
-
-  static loadDefaultPublicKey(): string | undefined {
-    const pubs = fs
-      .readdirSync(this.configDir(), { encoding: "utf8", withFileTypes: true })
-      .filter(
-        (d) => d.isFile() && ["id_rsa.pub", "id_ed25519.pub"].includes(d.name)
-      );
-    if (!pubs.length) {
-      return undefined;
-    }
-    return fs
-      .readFileSync(path.join(this.configDir(), pubs[0].name), "utf8")
-      .trim();
-  }
+  return fs
+    .readFileSync(path.join(dir, pubs[0].name), "utf8")
+    .trim();
 }
+
+

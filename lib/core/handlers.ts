@@ -1,8 +1,10 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as _ from "lodash";
+import * as os from "node:os"
+import * as fs from "node:fs"
+import * as path from "node:path"
 import { Ansible } from "./Ansible";
 import { BucketOperations } from "./aws/BucketOperations";
-import { getKeyPair } from "./KeyPair";
 import {
   Encryption,
   ShadowsocksProperties,
@@ -12,12 +14,15 @@ import * as client from "./client/configuration";
 import { NginxTunnel } from "./forwardtunnel/NginxTunnel";
 import { ClashRouter } from "./router/ClashRouter";
 import { ProxyCluster } from "./proxy/cluster";
+import { SingletonKeyPairHolder, SshOperations } from "./ssh";
 
 type ApplyResult = { clientConfigUrl: pulumi.Output<string> };
 
 export function minimal(stackConfig: pulumi.Config): ApplyResult {
+  const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), "fanqiang-"))
+  const keyPairHolder = new SingletonKeyPairHolder(tmpdir)
   const bucketOperations = new BucketOperations(stackConfig.require("bucket"));
-  const ansible = new Ansible(getKeyPair);
+  const ansible = new Ansible(keyPairHolder.get);
   const ssprops: ShadowsocksProperties = {
     encryption: stackConfig.require<Encryption>("encryption"),
     password: stackConfig.require("password"),
@@ -38,8 +43,10 @@ export function minimal(stackConfig: pulumi.Config): ApplyResult {
 }
 
 export function moderate(stackConfig: pulumi.Config): ApplyResult {
+  const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), "fanqiang-"))
+  const keyPairHolder = new SingletonKeyPairHolder(tmpdir)
   const bucketOperations = new BucketOperations(stackConfig.require("bucket"));
-  const ansible = new Ansible(getKeyPair);
+  const ansible = new Ansible(keyPairHolder.get);
   const ssprops: ShadowsocksProperties = {
     encryption: stackConfig.require<Encryption>("encryption"),
     password: stackConfig.require("password"),
@@ -65,8 +72,10 @@ export function moderate(stackConfig: pulumi.Config): ApplyResult {
 }
 
 export function premium(stackConfig: pulumi.Config): ApplyResult {
+  const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), "fanqiang-"))
+  const keyPairHolder = new SingletonKeyPairHolder(tmpdir)
   const bucketOperations = new BucketOperations(stackConfig.require("bucket"));
-  const ansible = new Ansible(getKeyPair);
+  const ansible = new Ansible(keyPairHolder.get);
   const ssprops: ShadowsocksProperties = {
     encryption: stackConfig.require<Encryption>("encryption"),
     password: stackConfig.require("password"),
@@ -96,8 +105,10 @@ export function premium(stackConfig: pulumi.Config): ApplyResult {
 }
 
 export function ultimate(stackConfig: pulumi.Config): ApplyResult {
+  const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), "fanqiang-"))
+  const keyPairHolder = new SingletonKeyPairHolder(tmpdir)
   const bucketOperations = new BucketOperations(stackConfig.require("bucket"));
-  const ansible = new Ansible(getKeyPair);
+  const ansible = new Ansible(keyPairHolder.get);
   const ssprops: ShadowsocksProperties = {
     encryption: stackConfig.require<Encryption>("encryption"),
     password: stackConfig.require("password"),

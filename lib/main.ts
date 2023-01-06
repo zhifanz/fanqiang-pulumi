@@ -1,6 +1,6 @@
 import * as pulumi from "@pulumi/pulumi";
 
-import { minimal, moderate, premium, ultimate } from "./core/handlers";
+import { minimal, moderate, premium, ultimate } from "./handlers";
 
 export function apply() {
   const stackConfig = new pulumi.Config();

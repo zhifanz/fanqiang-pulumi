@@ -9,9 +9,9 @@ import {
   Stack,
   UpResult,
 } from "@pulumi/pulumi/automation";
-import { waitConnectSuccess } from "../lib/core/utils";
-import { Ansible } from "../lib/core/Ansible";
-import { SingletonKeyPairHolder } from "../lib/core/ssh";
+import { waitConnectSuccess } from "../lib/utils";
+import { Ansible } from "../lib/Ansible";
+import { SingletonKeyPairHolder } from "../lib/ssh";
 
 export const stackHolder: { stack?: Stack } = {};
 

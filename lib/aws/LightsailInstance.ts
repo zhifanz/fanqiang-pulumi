@@ -1,7 +1,7 @@
 import * as aws from "@pulumi/aws";
 import * as pulumi from "@pulumi/pulumi";
-import * as _ from "lodash";
-import { Host } from "../../domain/Configuration";
+import _ from "lodash";
+import { Host } from "../domain";
 import { getRegion } from "./utils";
 
 type InitData = { keyPair: aws.lightsail.KeyPair };

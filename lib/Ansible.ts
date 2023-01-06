@@ -1,19 +1,19 @@
 import { local } from "@pulumi/command";
 import * as pulumi from "@pulumi/pulumi";
-import * as fs from "node:fs"
-import * as path from "node:path"
-import * as os from "node:os"
+import * as fs from "node:fs";
+import * as path from "node:path";
+import * as os from "node:os";
 import { GetKeyPairFunc } from "./ssh";
 
 export class Ansible {
   readonly publicKey: string;
   private readonly keyFile?: string;
   constructor(keyPairFactory: GetKeyPairFunc) {
-    let pk = loadDefaultPublicKey()
+    let pk = loadDefaultPublicKey();
     if (!pk) {
-      const keyPair = keyPairFactory()
-      pk = keyPair.publicKey
-      this.keyFile = keyPair.privateKeyFile
+      const keyPair = keyPairFactory();
+      pk = keyPair.publicKey;
+      this.keyFile = keyPair.privateKeyFile;
     }
     this.publicKey = pk;
   }
@@ -56,9 +56,9 @@ export class Ansible {
 }
 
 function loadDefaultPublicKey(): string | undefined {
-  const dir = path.join(os.homedir(), ".ssh")
+  const dir = path.join(os.homedir(), ".ssh");
   if (!fs.existsSync(dir)) {
-    return undefined
+    return undefined;
   }
   const pubs = fs
     .readdirSync(dir, { encoding: "utf8", withFileTypes: true })
@@ -68,9 +68,5 @@ function loadDefaultPublicKey(): string | undefined {
   if (!pubs.length) {
     return undefined;
   }
-  return fs
-    .readFileSync(path.join(dir, pubs[0].name), "utf8")
-    .trim();
+  return fs.readFileSync(path.join(dir, pubs[0].name), "utf8").trim();
 }
-
-

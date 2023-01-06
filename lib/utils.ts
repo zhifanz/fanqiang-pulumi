@@ -1,13 +1,13 @@
-import { CustomResource, Input, output, Output } from "@pulumi/pulumi";
-import { readFileSync } from "fs";
 import _ from "lodash";
 import * as path from "path";
 import * as net from "node:net";
+import { readFileSync } from "fs";
 import yaml from "js-yaml";
 import promiseRetry from "promise-retry";
 import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
 import * as crypto from "node:crypto";
+import { CustomResource } from "@pulumi/pulumi";
 
 export const DEFAULT_RESOURCE_NAME = "default";
 export const PULUMI_PROJECT_NAME = loadPulumiProjectConfiguration().name;

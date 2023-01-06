@@ -1,7 +1,7 @@
 import * as pulumi from "@pulumi/pulumi";
 import { CloudServer } from "../alicloud/CloudServer";
 import { asCloudConfig, DEFAULT_RESOURCE_NAME } from "../utils";
-import { Host, ServiceEndpoint } from "../../domain/Configuration";
+import { Host, ServiceEndpoint } from "../domain";
 import { Ansible } from "../Ansible";
 import * as path from "node:path";
 

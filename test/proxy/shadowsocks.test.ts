@@ -1,5 +1,5 @@
 import { applyProvisionProgram, assertConnectSuccess } from "../helper";
-import { ShadowsocksServer } from "../../lib/core/proxy/shadowsocks";
+import { ShadowsocksServer } from "../../lib/proxy/shadowsocks";
 
 describe("proxy", () => {
   describe("shadowsocks", () => {

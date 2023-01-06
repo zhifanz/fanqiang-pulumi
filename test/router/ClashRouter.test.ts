@@ -1,7 +1,7 @@
 import * as yaml from "yaml";
 import { applyProvisionProgram, assertConnectSuccess } from "../helper";
-import { ClashRouter } from "../../lib/core/router/clashRouter";
-import { BucketOperations } from "../../lib/core/aws/BucketOperations";
+import { ClashRouter } from "../../lib/router/clashRouter";
+import { BucketOperations } from "../../lib/aws/BucketOperations";
 import { assert } from "chai";
 
 describe("ClashRouter", function () {

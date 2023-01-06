@@ -1,6 +1,6 @@
 import { assert } from "chai";
-import { CloudServer } from "../../lib/core/alicloud/CloudServer";
-import { asCloudConfig } from "../../lib/core/utils";
+import { CloudServer } from "../../lib/alicloud/CloudServer";
+import { asCloudConfig } from "../../lib/utils";
 import { applyProgram, assertConnectSuccess } from "../helper";
 
 describe("CloudServer", () => {

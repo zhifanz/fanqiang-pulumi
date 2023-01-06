@@ -1,9 +1,9 @@
 import * as aws from "@pulumi/aws";
-import * as _ from "lodash";
+import * as path from "node:path";
+import _ from "lodash";
 import { Ansible } from "../Ansible";
 import { LightsailInstance } from "../aws/LightsailInstance";
 import { ShadowsocksProperties } from "./shadowsocks";
-import * as path from "node:path";
 
 export class ProxyCluster {
   readonly default: LightsailInstance;

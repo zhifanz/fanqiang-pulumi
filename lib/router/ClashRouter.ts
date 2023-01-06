@@ -9,7 +9,7 @@ import { asCloudConfig, DEFAULT_RESOURCE_NAME } from "../utils";
 import { ShadowsocksProperties } from "../proxy/shadowsocks";
 import { Ansible } from "../Ansible";
 import * as awsUtils from "../aws/utils";
-import { Host } from "../../domain/Configuration";
+import { Host } from "../domain";
 
 type DatabaseProps = { user: string; password: string; name: string };
 

@@ -1,11 +1,11 @@
 import * as path from "node:path";
 import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
+import _ from "lodash";
 import { Ansible } from "../Ansible";
-import * as _ from "lodash";
 import { LightsailInstance } from "../aws/LightsailInstance";
 import { DEFAULT_RESOURCE_NAME } from "../utils";
-import { Host } from "../../domain/Configuration";
+import { Host } from "../domain";
 
 export type Encryption =
   | "plain"

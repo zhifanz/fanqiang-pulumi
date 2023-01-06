@@ -1,8 +1,8 @@
-import { DEFAULT_RESOURCE_NAME } from "../utils";
 import * as pulumi from "@pulumi/pulumi";
 import * as alicloud from "@pulumi/alicloud";
-import * as _ from "lodash";
-import { Host } from "../../domain/Configuration";
+import _ from "lodash";
+import { DEFAULT_RESOURCE_NAME } from "../utils";
+import { Host } from "../domain";
 export class CloudServer extends pulumi.ComponentResource implements Host {
   private readonly securityGroup: alicloud.ecs.SecurityGroup;
   private readonly eip: alicloud.ecs.EipAddress;

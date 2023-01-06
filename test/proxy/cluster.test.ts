@@ -1,5 +1,5 @@
 import { applyProvisionProgram, assertConnectSuccess } from "../helper";
-import { ProxyCluster } from "../../lib/core/proxy/cluster";
+import { ProxyCluster } from "../../lib/proxy/cluster";
 import _ from "lodash";
 
 describe("cluster", () => {

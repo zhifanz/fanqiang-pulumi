@@ -1,17 +1,14 @@
-import * as pulumi from "@pulumi/pulumi";
 import * as yaml from "yaml";
-import { applyProgram, assertConnectSuccess } from "../helper";
+import { applyProvisionProgram, assertConnectSuccess } from "../helper";
 import { ClashRouter } from "../../lib/core/router/clashRouter";
 import { BucketOperations } from "../../lib/core/aws/BucketOperations";
 import { assert } from "chai";
-import { Ansible } from "../../lib/core/Ansible";
-import { getKeyPair } from "../../lib/core/KeyPair";
 
 describe("ClashRouter", function () {
   it("apply clash router", async function () {
-    const result = await applyProgram(async () => {
+    const result = await applyProvisionProgram(async (ansible) => {
       const host = new ClashRouter(
-        new Ansible(getKeyPair),
+        ansible,
         new BucketOperations("fanqiang-test"),
         {
           hosts: {

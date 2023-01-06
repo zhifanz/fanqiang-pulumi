@@ -1,19 +1,17 @@
-import { applyProgram, assertConnectSuccess } from "../helper";
+import { applyProvisionProgram, assertConnectSuccess } from "../helper";
 import { ShadowsocksServer } from "../../lib/core/proxy/shadowsocks";
-import { Ansible } from "../../lib/core/Ansible";
-import { getKeyPair } from "../../lib/core/KeyPair";
 
 describe("proxy", () => {
   describe("shadowsocks", () => {
     it("checking proxy port open", async () => {
-      const result = await applyProgram(async () => {
+      const result = await applyProvisionProgram(async (ansible) => {
         const component = new ShadowsocksServer(
           {
             password: "test",
             port: 8388,
             encryption: "aes-256-gcm",
           },
-          new Ansible(getKeyPair)
+          ansible
         );
         return { host: component.ipAddress };
       });

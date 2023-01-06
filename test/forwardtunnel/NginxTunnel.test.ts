@@ -1,15 +1,17 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
-import { applyProgram, assertConnectSuccess } from "../helper";
+import {
+  applyProgram,
+  applyProvisionProgram,
+  assertConnectSuccess,
+} from "../helper";
 import { assert } from "chai";
 import { NginxTunnel } from "../../lib/core/forwardtunnel/nginxTunnel";
-import { Ansible } from "../../lib/core/Ansible";
-import { getKeyPair } from "../../lib/core/KeyPair";
 
 describe("NginxTunnel", function () {
   it("apply nginx tunnel", async function () {
-    const result = await applyProgram(async () => {
-      const host = new NginxTunnel(new Ansible(getKeyPair), {
+    const result = await applyProvisionProgram(async (ansible) => {
+      const host = new NginxTunnel(ansible, {
         port: 8388,
         ipAddress: pulumi.output("0.0.0.0"),
       });

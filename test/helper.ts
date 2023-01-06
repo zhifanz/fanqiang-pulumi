@@ -1,3 +1,6 @@
+import fs from "node:fs/promises";
+import path from "node:path";
+import os from "node:os";
 import project from "../package.json";
 import {
   InlineProgramArgs,
@@ -7,6 +10,8 @@ import {
   UpResult,
 } from "@pulumi/pulumi/automation";
 import { waitConnectSuccess } from "../lib/core/utils";
+import { Ansible } from "../lib/core/Ansible";
+import { SingletonKeyPairHolder } from "../lib/core/ssh";
 
 export const stackHolder: { stack?: Stack } = {};
 
@@ -43,6 +48,19 @@ export async function applyProgram(
       }
     },
   });
+}
+
+export async function applyProvisionProgram(
+  program: (ansible: Ansible) => ReturnType<PulumiFn>
+) {
+  const tmpdir = await fs.mkdtemp(path.join(os.tmpdir(), "fanqiang-"));
+  try {
+    const keyPairHolder = new SingletonKeyPairHolder(tmpdir);
+    const ansilbe = new Ansible(keyPairHolder.get);
+    return applyProgram(() => program(ansilbe));
+  } finally {
+    await fs.rm(tmpdir, { recursive: true });
+  }
 }
 
 export async function assertConnectSuccess(

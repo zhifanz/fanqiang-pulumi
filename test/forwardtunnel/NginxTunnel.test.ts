@@ -6,7 +6,7 @@ import {
   assertConnectSuccess,
 } from "../helper";
 import { assert } from "chai";
-import { NginxTunnel } from "../../lib/forwardtunnel/nginxTunnel";
+import { NginxTunnel } from "../../lib/forwardtunnel/NginxTunnel";
 
 describe("NginxTunnel", function () {
   it("apply nginx tunnel", async function () {

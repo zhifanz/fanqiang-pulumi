@@ -33,11 +33,7 @@ export class ShadowsocksServer
     this.instance = new LightsailInstance(
       "ssserver-default",
       [22, props.port],
-      new aws.lightsail.KeyPair(
-        "ansible",
-        { publicKey: ansible.publicKey },
-        { parent: this }
-      ),
+      { name: "fanqiang", publicKey: ansible.publicKey },
       { parent: this }
     );
 

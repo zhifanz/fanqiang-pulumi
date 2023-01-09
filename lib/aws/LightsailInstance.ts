@@ -10,18 +10,23 @@ export class LightsailInstance
   extends pulumi.ComponentResource<InitData>
   implements Host
 {
-  private readonly instance: aws.lightsail.Instance;
+  readonly ipAddress: pulumi.Output<string>;
   constructor(
     name: string,
     ports: number[],
-    keyPair: aws.lightsail.KeyPair,
+    keyPair: { name: string; publicKey: string },
     opts?: { parent?: pulumi.Resource; provider?: aws.Provider }
   ) {
     super("fanqiang:aws:LightsailInstance", name, undefined, {
       providers: opts?.provider && { aws: opts.provider },
       parent: opts?.parent,
     });
-    this.instance = new aws.lightsail.Instance(
+    const kp = new aws.lightsail.KeyPair(
+      keyPair.name,
+      { publicKey: keyPair.publicKey },
+      { parent: this, provider: opts?.provider }
+    );
+    const instance = new aws.lightsail.Instance(
       `${name}-instance`,
       {
         availabilityZone: pulumi.concat(
@@ -30,14 +35,14 @@ export class LightsailInstance
         ),
         blueprintId: "amazon_linux_2",
         bundleId: "nano_2_0",
-        keyPairName: keyPair.name,
+        keyPairName: kp.name,
       },
       { parent: this, provider: opts?.provider }
     );
     new aws.lightsail.InstancePublicPorts(
       `${name}-ports`,
       {
-        instanceName: this.instance.name,
+        instanceName: instance.name,
         portInfos: ports.map((p) => ({
           protocol: "tcp",
           fromPort: p,
@@ -47,9 +52,6 @@ export class LightsailInstance
       },
       { parent: this, provider: opts?.provider }
     );
-  }
-
-  get ipAddress(): pulumi.Output<string> {
-    return this.instance.publicIpAddress;
+    this.ipAddress = instance.publicIpAddress;
   }
 }

@@ -15,17 +15,16 @@ export class ProxyCluster {
     ...publicKeys: string[]
   ) {
     const ports = [22, props.port];
-    this.default = new LightsailInstance(
-      "ssserver-default",
-      ports,
-      this.createKeyPair("ansible", ansible.publicKey)
-    );
+    this.default = new LightsailInstance("ssserver-default", ports, {
+      name: "fanqiang",
+      publicKey: ansible.publicKey,
+    });
     extraRegions.forEach((region) => {
       const provider = new aws.Provider(region, { region });
       this.extra[extractContinent(region)] = new LightsailInstance(
         `ssserver-${region}`,
         ports,
-        this.createKeyPair(`ansible-${region}`, ansible.publicKey, provider),
+        { name: `fanqiang-${region}`, publicKey: ansible.publicKey },
         { provider }
       );
     });
@@ -44,14 +43,6 @@ export class ProxyCluster {
         dependsOn: this.instances,
       }
     );
-  }
-
-  private createKeyPair(
-    name: string,
-    publicKey: string,
-    provider?: aws.Provider
-  ): aws.lightsail.KeyPair {
-    return new aws.lightsail.KeyPair(name, { publicKey }, { provider });
   }
 
   get instances(): LightsailInstance[] {

@@ -11,7 +11,7 @@ import {
 } from "@pulumi/pulumi/automation";
 import { waitConnectSuccess } from "../lib/utils";
 import { Ansible } from "../lib/Ansible";
-import { SingletonKeyPairHolder } from "../lib/ssh";
+import { KeyPairHolder } from "../lib/ssh";
 
 export const stackHolder: { stack?: Stack } = {};
 
@@ -55,7 +55,7 @@ export async function applyProvisionProgram(
 ) {
   const tmpdir = await fs.mkdtemp(path.join(os.tmpdir(), "fanqiang-"));
   try {
-    const keyPairHolder = new SingletonKeyPairHolder(tmpdir);
+    const keyPairHolder = new KeyPairHolder(tmpdir);
     const ansilbe = new Ansible(keyPairHolder.get);
     return applyProgram(() => program(ansilbe));
   } finally {

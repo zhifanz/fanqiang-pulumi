@@ -37,7 +37,7 @@ export class SshOperations {
   }
 }
 
-export class SingletonKeyPairHolder {
+export class KeyPairHolder {
   private keyPair: KeyPair | undefined;
   constructor(readonly dir: string) {}
 

@@ -14,17 +14,18 @@ export class LightsailInstance
   constructor(
     name: string,
     ports: number[],
-    keyPair: { name: string; publicKey: string },
+    publicKey: string,
     opts?: { parent?: pulumi.Resource; provider?: aws.Provider }
   ) {
     super("fanqiang:aws:LightsailInstance", name, undefined, {
       providers: opts?.provider && { aws: opts.provider },
       parent: opts?.parent,
     });
+    const resourceOpts = { parent: this, provider: opts?.provider };
     const kp = new aws.lightsail.KeyPair(
-      keyPair.name,
-      { publicKey: keyPair.publicKey },
-      { parent: this, provider: opts?.provider }
+      `${name}-pk`,
+      { publicKey },
+      resourceOpts
     );
     const instance = new aws.lightsail.Instance(
       `${name}-instance`,
@@ -37,7 +38,7 @@ export class LightsailInstance
         bundleId: "nano_2_0",
         keyPairName: kp.name,
       },
-      { parent: this, provider: opts?.provider }
+      resourceOpts
     );
     new aws.lightsail.InstancePublicPorts(
       `${name}-ports`,
@@ -50,7 +51,7 @@ export class LightsailInstance
           cidrs: ["0.0.0.0/0"],
         })),
       },
-      { parent: this, provider: opts?.provider }
+      resourceOpts
     );
     this.ipAddress = instance.publicIpAddress;
   }

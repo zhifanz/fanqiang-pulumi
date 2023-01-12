@@ -1,7 +1,10 @@
 import nunjucks from "nunjucks";
 import { ShadowsocksProperties } from "../proxy/shadowsocks";
 
-const template = nunjucks.configure(__dirname);
+const template = nunjucks.configure(__dirname, {
+  trimBlocks: true,
+  lstripBlocks: true,
+});
 
 export type ClashParams = Partial<ShadowsocksProperties> & { host: string };
 

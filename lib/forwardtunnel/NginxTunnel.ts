@@ -24,7 +24,7 @@ export class NginxTunnel extends pulumi.ComponentResource implements Host {
     );
     this.ipAddress = instance.ipAddress;
     ansible.provisionInstance(
-      "provisionNginxTunnel",
+      "provision-nginx-tunnel",
       [this.ipAddress],
       path.join(__dirname, "playbook.yml"),
       {

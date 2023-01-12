@@ -17,6 +17,8 @@
       ansible.builtin.template:
         src: "{{ item }}"
         dest: "/opt/clash/{{ item }}"
+        lstrip_blocks: true
+        trim_blocks: true
         mode: 0644
       loop:
         - clash-config.yml.j2

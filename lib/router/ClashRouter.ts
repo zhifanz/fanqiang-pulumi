@@ -106,7 +106,7 @@ export class ClashRouter extends pulumi.ComponentResource implements Host {
         }));
     }
     ansible.provisionInstance(
-      "provisionClashRouter",
+      "provision-clash-router",
       [server.ipAddress],
       path.join(__dirname, "playbook.yml"),
       {

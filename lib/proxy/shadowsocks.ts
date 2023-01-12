@@ -38,7 +38,7 @@ export class ShadowsocksServer
     );
 
     ansible.provisionInstance(
-      "provisionShadowsocksServer",
+      "provision-shadowsocks-server",
       [this.instance.ipAddress],
       path.join(__dirname, "playbook.yml"),
       {

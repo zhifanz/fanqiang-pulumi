@@ -31,7 +31,7 @@ export class ProxyCluster {
     });
 
     ansible.provisionInstance(
-      "provisionSsserverCluster",
+      "provision-ssserver-cluster",
       this.instances.map((e) => e.ipAddress),
       path.join(__dirname, "playbook.yml"),
       {

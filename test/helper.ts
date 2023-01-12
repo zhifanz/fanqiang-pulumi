@@ -56,7 +56,7 @@ export async function applyProvisionProgram(
   const tmpdir = await fs.mkdtemp(path.join(os.tmpdir(), "fanqiang-"));
   try {
     const keyPairHolder = new KeyPairHolder(tmpdir);
-    const ansilbe = new Ansible(keyPairHolder.get);
+    const ansilbe = await Ansible.create(keyPairHolder.get);
     return applyProgram(() => program(ansilbe));
   } finally {
     await fs.rm(tmpdir, { recursive: true });

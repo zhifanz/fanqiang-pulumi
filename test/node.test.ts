@@ -9,7 +9,6 @@ describe("node", function () {
   });
 });
 
-class Bar {}
 interface Foo {
   (val: number): number;
 }

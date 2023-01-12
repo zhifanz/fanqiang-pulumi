@@ -1,7 +1,7 @@
 import * as pulumi from "@pulumi/pulumi";
 import path from "node:path";
 import os from "node:os";
-import fs from "node:fs";
+import fs from "node:fs/promises";
 
 import { minimal, moderate, premium, ultimate, Context } from "./handlers";
 import { KeyPairHolder } from "./ssh";
@@ -9,11 +9,11 @@ import { BucketOperations } from "./aws/BucketOperations";
 import { Ansible } from "./Ansible";
 import { Encryption, ShadowsocksProperties } from "./proxy/shadowsocks";
 
-function loadContext(): Context & { scale: string } {
+async function loadContext(): Promise<Context & { scale: string }> {
   const stackConfig = new pulumi.Config();
-  const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), "fanqiang-"));
+  const tmpdir = await fs.mkdtemp(path.join(os.tmpdir(), "fanqiang-"));
   const keyPairHolder = new KeyPairHolder(tmpdir);
-  const ansible = new Ansible(keyPairHolder.get);
+  const ansible = await Ansible.create(keyPairHolder.get);
   const bucketOperations = new BucketOperations(stackConfig.require("bucket"));
   const ssprops: ShadowsocksProperties = {
     encryption: stackConfig.require<Encryption>("encryption"),
@@ -34,8 +34,8 @@ function loadContext(): Context & { scale: string } {
   };
 }
 
-export function apply() {
-  const context = loadContext();
+export async function apply() {
+  const context = await loadContext();
   switch (context.scale) {
     case "minimal":
       return minimal(context);

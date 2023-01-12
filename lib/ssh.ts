@@ -1,8 +1,9 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as cp from "node:child_process";
+import * as util from "node:util";
 
-export type GetKeyPairFunc = () => KeyPair;
+export type GetKeyPairFunc = () => Promise<KeyPair>;
 
 export class KeyPair {
   constructor(readonly privateKeyFile: string) {}
@@ -22,16 +23,13 @@ export class KeyPair {
 
 export class SshOperations {
   static readonly FILE_NAME = "id_ed25519.fanqiang";
-  static generateKeyPair(dir: string): KeyPair {
-    cp.execFileSync(
-      "ssh-keygen",
-      ["-t", "ed25519", "-C", "bot@fanqiang", "-N", "", "-f", this.FILE_NAME],
-      { encoding: "utf-8", cwd: dir }
+  static async generateKeyPair(dir: string): Promise<KeyPair> {
+    const execCommand = (command: string) =>
+      util.promisify(cp.exec)(command, { encoding: "utf-8", cwd: dir });
+    await execCommand(
+      `ssh-keygen -t ed25519 -C bot@fanqiang -N '' -f ${this.FILE_NAME}`
     );
-    cp.execFileSync("chmod", ["0600", this.FILE_NAME], {
-      encoding: "utf-8",
-      cwd: dir,
-    });
+    await execCommand(`chmod 0600 ${this.FILE_NAME}`);
     const keyFile = path.join(dir, this.FILE_NAME);
     return new KeyPair(keyFile);
   }
@@ -41,9 +39,9 @@ export class KeyPairHolder {
   private keyPair: KeyPair | undefined;
   constructor(readonly dir: string) {}
 
-  get: GetKeyPairFunc = () => {
+  get: GetKeyPairFunc = async () => {
     if (!this.keyPair) {
-      this.keyPair = SshOperations.generateKeyPair(this.dir);
+      this.keyPair = await SshOperations.generateKeyPair(this.dir);
     }
     return this.keyPair;
   };

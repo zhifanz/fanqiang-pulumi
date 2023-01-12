@@ -8,7 +8,7 @@ describe("ssh", () => {
   it("successfully generate key pair", async () => {
     const tmpdir = await fs.mkdtemp(path.join(os.tmpdir(), "fanqiang-"));
     try {
-      const keyPair = SshOperations.generateKeyPair(tmpdir);
+      const keyPair = await SshOperations.generateKeyPair(tmpdir);
       const pub = keyPair.publicKey;
       const priv = keyPair.privateKey;
       assert.isDefined(keyPair.privateKeyFile);

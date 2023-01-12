@@ -1,6 +1,6 @@
 import * as yaml from "yaml";
 import { applyProvisionProgram, assertConnectSuccess } from "../helper";
-import { ClashRouter } from "../../lib/router/clashRouter";
+import { ClashRouter } from "../../lib/router/ClashRouter";
 import { BucketOperations } from "../../lib/aws/BucketOperations";
 import { assert } from "chai";
 

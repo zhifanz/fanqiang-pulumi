@@ -24,14 +24,12 @@ export class KeyPair {
 export class SshOperations {
   static readonly FILE_NAME = "id_ed25519.fanqiang";
   static async generateKeyPair(dir: string): Promise<KeyPair> {
-    const execCommand = (command: string) =>
-      util.promisify(cp.exec)(command, { encoding: "utf-8", cwd: dir });
-    await execCommand(
-      `ssh-keygen -t ed25519 -C bot@fanqiang -N '' -f ${this.FILE_NAME}`
+    const secretFile = path.join(dir, this.FILE_NAME);
+    await util.promisify(cp.exec)(
+      `ssh-keygen -t ed25519 -C bot@fanqiang -N '' -f ${secretFile}`
     );
-    await execCommand(`chmod 0600 ${this.FILE_NAME}`);
-    const keyFile = path.join(dir, this.FILE_NAME);
-    return new KeyPair(keyFile);
+    await fs.chmod(secretFile, 0o600);
+    return new KeyPair(secretFile);
   }
 }
 

@@ -9,8 +9,8 @@ describe("ssh", () => {
     const tmpdir = await fs.mkdtemp(path.join(os.tmpdir(), "fanqiang-"));
     try {
       const keyPair = await SshOperations.generateKeyPair(tmpdir);
-      const pub = keyPair.publicKey;
-      const priv = keyPair.privateKey;
+      const pub = await keyPair.publicKey;
+      const priv = await keyPair.privateKey;
       assert.isDefined(keyPair.privateKeyFile);
       assert.isDefined(keyPair.publicKeyFile);
       assert.isTrue(pub.startsWith("ssh-ed25519"));

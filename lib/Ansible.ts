@@ -13,7 +13,7 @@ export class Ansible {
     let publicKey = await loadDefaultPublicKey();
     if (!publicKey) {
       const keyPair = await keyPairFactory();
-      publicKey = keyPair.publicKey;
+      publicKey = await keyPair.publicKey;
       keyFile = keyPair.privateKeyFile;
     }
     return new Ansible(publicKey, keyFile);

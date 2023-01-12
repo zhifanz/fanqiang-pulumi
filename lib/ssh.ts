@@ -1,4 +1,4 @@
-import * as fs from "node:fs";
+import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import * as cp from "node:child_process";
 import * as util from "node:util";
@@ -12,12 +12,12 @@ export class KeyPair {
     return this.privateKeyFile + ".pub";
   }
 
-  get publicKey(): string {
-    return fs.readFileSync(this.publicKeyFile, "utf-8");
+  get publicKey(): Promise<string> {
+    return fs.readFile(this.publicKeyFile, "utf-8");
   }
 
-  get privateKey(): string {
-    return fs.readFileSync(this.privateKeyFile, "utf-8");
+  get privateKey(): Promise<string> {
+    return fs.readFile(this.privateKeyFile, "utf-8");
   }
 }
 

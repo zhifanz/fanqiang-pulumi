@@ -1,6 +1,6 @@
 import { assert } from "chai";
 import { CloudServer } from "../../lib/alicloud/CloudServer";
-import { asCloudConfig } from "../../lib/utils";
+import * as cloudconfig from "../../lib/cloudinit/cloudconfig";
 import { applyProgram, assertConnectSuccess } from "../helper";
 
 describe("CloudServer", () => {
@@ -15,9 +15,9 @@ describe("CloudServer", () => {
       const server = new CloudServer(
         { ssh: 22 },
         {
-          userData: asCloudConfig({
-            ssh_authorized_keys: [process.env["PUBLIC_KEY"]],
-          }),
+          userData: cloudconfig.withSshAuthorizedKeys([
+            <string>process.env["PUBLIC_KEY"],
+          ]),
         }
       );
       return { host: server.ipAddress };

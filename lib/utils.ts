@@ -1,29 +1,8 @@
 import _ from "lodash";
-import * as path from "path";
 import * as net from "node:net";
-import { readFileSync } from "fs";
-import yaml from "js-yaml";
 import promiseRetry from "promise-retry";
-import * as pulumi from "@pulumi/pulumi";
-import * as aws from "@pulumi/aws";
-import * as crypto from "node:crypto";
-import { CustomResource } from "@pulumi/pulumi";
 
 export const DEFAULT_RESOURCE_NAME = "default";
-
-export function defaultResource<
-  T extends CustomResource,
-  TC extends new (...args: any[]) => T
->(resourceConstructor: TC, args: ConstructorParameters<TC>[1]): T {
-  return new resourceConstructor("default", args);
-}
-
-export function basicAuthentication(
-  username: string,
-  password: string
-): string {
-  return Buffer.from(`${username}:${password}`).toString("base64");
-}
 
 export async function tryConnect(host: string, port: number): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -54,16 +33,4 @@ export async function waitConnectSuccess(
     },
     { retries: 10, maxRetryTime: timeout, minTimeout: 10 * 1000 }
   );
-}
-
-export function getAwsRegion(): pulumi.Output<string> {
-  return pulumi.output(aws.getRegion()).apply((r) => r.id);
-}
-
-export function randomPassword(size: number) {
-  return crypto.randomBytes(size).toString("hex");
-}
-
-export function asCloudConfig(data: any): string {
-  return "#cloud-config\n\n" + yaml.dump(data);
 }

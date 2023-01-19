@@ -1,9 +1,10 @@
 import * as pulumi from "@pulumi/pulumi";
 import { CloudServer } from "../alicloud/CloudServer";
-import { asCloudConfig, DEFAULT_RESOURCE_NAME } from "../utils";
+import * as cloudconfig from "../cloudinit/cloudconfig";
 import { Host, ServiceEndpoint } from "../domain";
 import { Ansible } from "../Ansible";
 import * as path from "node:path";
+import { DEFAULT_RESOURCE_NAME } from "../utils";
 
 export class NginxTunnel extends pulumi.ComponentResource implements Host {
   readonly ipAddress: pulumi.Output<string>;
@@ -16,9 +17,10 @@ export class NginxTunnel extends pulumi.ComponentResource implements Host {
     const instance = new CloudServer(
       { ssh: 22, nginx: upstreamService.port },
       {
-        userData: asCloudConfig({
-          ssh_authorized_keys: [ansible.publicKey, ...publicKeys],
-        }),
+        userData: cloudconfig.withSshAuthorizedKeys([
+          ansible.publicKey,
+          ...publicKeys,
+        ]),
         parent: this,
       }
     );

@@ -1,8 +1,6 @@
-import * as yaml from "yaml";
 import { applyProvisionProgram, assertConnectSuccess } from "../helper";
 import { ClashRouter } from "../../lib/router/ClashRouter";
 import { BucketOperations } from "../../lib/aws/BucketOperations";
-import { assert } from "chai";
 
 describe("ClashRouter", function () {
   it("apply clash router", async function () {
@@ -27,10 +25,5 @@ describe("ClashRouter", function () {
     });
     const ip = result.outputs["host"].value;
     await assertConnectSuccess(ip, 8388);
-  });
-
-  it("yaml stringify", function () {
-    const result = yaml.stringify({ payload: ["noop"] });
-    assert.equal(result, "payload:\n  - noop\n");
   });
 });

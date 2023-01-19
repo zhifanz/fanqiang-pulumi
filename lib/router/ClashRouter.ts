@@ -1,11 +1,12 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
 import * as path from "node:path";
-import * as yaml from "yaml";
+import fs from "node:fs/promises";
 import _ from "lodash";
 import { BucketOperations } from "../aws/BucketOperations";
 import { CloudServer } from "../alicloud/CloudServer";
-import { asCloudConfig, DEFAULT_RESOURCE_NAME } from "../utils";
+import { DEFAULT_RESOURCE_NAME } from "../utils";
+import * as cloudconfig from "../cloudinit/cloudconfig";
 import { ShadowsocksProperties } from "../proxy/shadowsocks";
 import { Ansible } from "../Ansible";
 import * as awsUtils from "../aws/utils";
@@ -47,9 +48,10 @@ export class ClashRouter extends pulumi.ComponentResource implements Host {
     const server = new CloudServer(
       { clash: proxyInfra.props.port, ssh: 22 },
       {
-        userData: asCloudConfig({
-          ssh_authorized_keys: [ansible.publicKey, ...publicKeys],
-        }),
+        userData: cloudconfig.withSshAuthorizedKeys([
+          ansible.publicKey,
+          ...publicKeys,
+        ]),
         parent: this,
       }
     );
@@ -126,7 +128,7 @@ export class ClashRouter extends pulumi.ComponentResource implements Host {
   ): pulumi.Output<string> {
     const result = bucket.uploadContent(
       `clash/rules/${name}-domains.yml`,
-      yaml.stringify({ payload: ["placeholder.noop"] }),
+      fs.readFile(path.join(__dirname, "domains.yml"), "utf8"),
       {
         parent: this,
         publicRead: true,

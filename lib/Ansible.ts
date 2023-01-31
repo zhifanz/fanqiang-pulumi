@@ -45,7 +45,7 @@ export class Ansible {
     shellCommand.apply((c) =>
       pulumi.log.debug("Provisioning instances with ansible command: " + c)
     );
-    return new local.Command(
+    const command = new local.Command(
       name,
       {
         create: shellCommand,
@@ -56,6 +56,14 @@ export class Ansible {
       },
       { parent: opts?.parent, dependsOn: opts?.dependsOn }
     );
+    pulumi
+      .all([command.stdout, command.stderr])
+      .apply(([stdout, stderr]) =>
+        pulumi.log.debug(
+          `Console output from previous ansible command:\n${stdout}\n${stderr}`
+        )
+      );
+    return command;
   }
 }
 

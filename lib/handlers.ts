@@ -8,7 +8,10 @@ import { NginxTunnel } from "./forwardtunnel/NginxTunnel";
 import { ClashRouter } from "./router/ClashRouter";
 import { ProxyCluster } from "./proxy/cluster";
 
-type ApplyResult = { clientConfigUrl: pulumi.Output<string> };
+type ApplyResult = {
+  clientConfigUrl: pulumi.Output<string>;
+  [k: string]: pulumi.Output<string | number>;
+};
 export interface Context {
   tmpdir: string;
   ansible: Ansible;
@@ -78,7 +81,11 @@ export function premium(context: Context): ApplyResult {
     ),
     { publicRead: true }
   );
-  return { clientConfigUrl: context.bucketOperations.getUrl(configObject.key) };
+  return {
+    clientConfigUrl: context.bucketOperations.getUrl(configObject.key),
+    databaseEndpointAddress: router.databaseEndpoint.address,
+    databaseEndpointPort: router.databaseEndpoint.port,
+  };
 }
 
 export function ultimate(context: Context): ApplyResult {
@@ -112,5 +119,9 @@ export function ultimate(context: Context): ApplyResult {
     ),
     { publicRead: true }
   );
-  return { clientConfigUrl: context.bucketOperations.getUrl(configObject.key) };
+  return {
+    clientConfigUrl: context.bucketOperations.getUrl(configObject.key),
+    databaseEndpointAddress: router.databaseEndpoint.address,
+    databaseEndpointPort: router.databaseEndpoint.port,
+  };
 }

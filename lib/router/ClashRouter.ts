@@ -10,7 +10,7 @@ import * as cloudconfig from "../cloudinit/cloudconfig";
 import { ShadowsocksProperties } from "../proxy/shadowsocks";
 import { Ansible } from "../Ansible";
 import * as awsUtils from "../aws/utils";
-import { Host } from "../domain";
+import { Host, ServiceEndpoint } from "../domain";
 
 type DatabaseProps = { user: string; password: string; name: string };
 
@@ -31,6 +31,7 @@ type RunbookExtraVars = {
 
 export class ClashRouter extends pulumi.ComponentResource implements Host {
   readonly ipAddress: pulumi.Output<string>;
+  readonly database: aws.lightsail.Database;
   constructor(
     ansible: Ansible,
     bucket: BucketOperations,
@@ -55,7 +56,7 @@ export class ClashRouter extends pulumi.ComponentResource implements Host {
         parent: this,
       }
     );
-    const database = new aws.lightsail.Database(
+    this.database = new aws.lightsail.Database(
       "postgres",
       {
         availabilityZone: pulumi.concat(awsUtils.getRegion(), "a"),
@@ -74,8 +75,8 @@ export class ClashRouter extends pulumi.ComponentResource implements Host {
     let runbookExtraVars: pulumi.Output<RunbookExtraVars> = pulumi
       .all([
         proxyInfra.hosts.default,
-        database.masterEndpointAddress,
-        database.masterEndpointPort,
+        this.database.masterEndpointAddress,
+        this.database.masterEndpointPort,
         this.prepareRuleLinks(bucket, "domestic"),
       ])
       .apply(([proxy, db, port, domestic]) => ({
@@ -115,7 +116,7 @@ export class ClashRouter extends pulumi.ComponentResource implements Host {
         remoteUser: "root",
         extraVars: runbookExtraVars.apply(JSON.stringify),
         parent: this,
-        dependsOn: [server, database],
+        dependsOn: [server, this.database],
       }
     );
 
@@ -135,5 +136,12 @@ export class ClashRouter extends pulumi.ComponentResource implements Host {
       }
     );
     return bucket.getUrl(result.key);
+  }
+
+  get databaseEndpoint() {
+    return {
+      address: this.database.masterEndpointAddress,
+      port: this.database.masterEndpointPort,
+    };
   }
 }

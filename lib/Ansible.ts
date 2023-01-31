@@ -42,7 +42,9 @@ export class Ansible {
     }
     const concatedHosts = pulumi.all(hosts).apply((values) => values.join());
     shellCommand = pulumi.interpolate`${shellCommand} --inventory ${concatedHosts}, ${runbook}`;
-    shellCommand.apply((c) => console.log("Running ansible command: " + c));
+    shellCommand.apply((c) =>
+      pulumi.log.debug("Provisioning instances with ansible command: " + c)
+    );
     return new local.Command(
       name,
       {

@@ -8,7 +8,7 @@ describe("pulumi", () => {
       const result = await applyProgram(async function () {
         const foo = new Foo();
         const bar = new Bar(foo);
-        return { count: bar.count };
+        return { count: pulumi.output(undefined).apply(() => bar.count) };
       });
       assert.equal(result.outputs["count"].value, 7);
     });
@@ -16,22 +16,17 @@ describe("pulumi", () => {
 });
 
 class Foo extends pulumi.ComponentResource {
-  count: number;
+  count: number = 0;
   constructor() {
     super("Foo", "default");
-    this.count = 0;
-    const noop = pulumi.output("noop").apply(() => {
-      this.count += 7;
-    });
-
-    this.registerOutputs({ noop });
+    pulumi.output(undefined).apply(() => (this.count = 7));
   }
 }
 
 class Bar extends pulumi.ComponentResource {
-  count: number;
+  count: number = 0;
   constructor(foo: Foo) {
     super("Bar", "default", undefined, { dependsOn: foo });
-    this.count = foo.count;
+    pulumi.output(undefined).apply(() => (this.count = foo.count));
   }
 }

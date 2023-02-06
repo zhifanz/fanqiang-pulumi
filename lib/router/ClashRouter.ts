@@ -1,5 +1,4 @@
 import * as pulumi from "@pulumi/pulumi";
-import * as aws from "@pulumi/aws";
 import * as path from "node:path";
 import fs from "node:fs/promises";
 import _ from "lodash";
@@ -9,10 +8,9 @@ import { DEFAULT_RESOURCE_NAME } from "../utils";
 import * as cloudconfig from "../cloudinit/cloudconfig";
 import { ShadowsocksProperties } from "../proxy/shadowsocks";
 import { Ansible } from "../Ansible";
-import * as awsUtils from "../aws/utils";
-import { Host, ServiceEndpoint } from "../domain";
 
-type DatabaseProps = { user: string; password: string; name: string };
+import { Host } from "../domain";
+import { ClashLogDatabase, DatabaseProps } from "./ClashLogDatabase";
 
 type RunbookExtraVars = {
   proxy: {
@@ -31,7 +29,7 @@ type RunbookExtraVars = {
 
 export class ClashRouter extends pulumi.ComponentResource implements Host {
   readonly ipAddress: pulumi.Output<string>;
-  readonly database: aws.lightsail.Database;
+  readonly clashLogDb: ClashLogDatabase;
   constructor(
     ansible: Ansible,
     bucket: BucketOperations,
@@ -56,27 +54,12 @@ export class ClashRouter extends pulumi.ComponentResource implements Host {
         parent: this,
       }
     );
-    this.database = new aws.lightsail.Database(
-      "postgres",
-      {
-        availabilityZone: pulumi.concat(awsUtils.getRegion(), "a"),
-        blueprintId: "postgres_12",
-        bundleId: "micro_1_0",
-        masterDatabaseName: databaseProps.name,
-        masterPassword: databaseProps.password,
-        masterUsername: databaseProps.user,
-        relationalDatabaseName: "postgres",
-        applyImmediately: true,
-        publiclyAccessible: true,
-        skipFinalSnapshot: true,
-      },
-      { parent: this }
-    );
+    this.clashLogDb = new ClashLogDatabase(databaseProps, this);
     let runbookExtraVars: pulumi.Output<RunbookExtraVars> = pulumi
       .all([
         proxyInfra.hosts.default,
-        this.database.masterEndpointAddress,
-        this.database.masterEndpointPort,
+        this.clashLogDb.address,
+        this.clashLogDb.port,
         this.prepareRuleLinks(bucket, "domestic"),
       ])
       .apply(([proxy, db, port, domestic]) => ({
@@ -116,7 +99,7 @@ export class ClashRouter extends pulumi.ComponentResource implements Host {
         remoteUser: "root",
         extraVars: runbookExtraVars.apply(JSON.stringify),
         parent: this,
-        dependsOn: [server, this.database],
+        dependsOn: [server, this.clashLogDb],
       }
     );
 
@@ -136,12 +119,5 @@ export class ClashRouter extends pulumi.ComponentResource implements Host {
       }
     );
     return bucket.getUrl(result.key);
-  }
-
-  get databaseEndpoint() {
-    return {
-      address: this.database.masterEndpointAddress,
-      port: this.database.masterEndpointPort,
-    };
   }
 }

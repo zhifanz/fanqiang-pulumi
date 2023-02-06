@@ -83,8 +83,8 @@ export function premium(context: Context): ApplyResult {
   );
   return {
     clientConfigUrl: context.bucketOperations.getUrl(configObject.key),
-    databaseEndpointAddress: router.databaseEndpoint.address,
-    databaseEndpointPort: router.databaseEndpoint.port,
+    databaseEndpointAddress: router.clashLogDb.address,
+    databaseEndpointPort: router.clashLogDb.port,
   };
 }
 
@@ -121,7 +121,7 @@ export function ultimate(context: Context): ApplyResult {
   );
   return {
     clientConfigUrl: context.bucketOperations.getUrl(configObject.key),
-    databaseEndpointAddress: router.databaseEndpoint.address,
-    databaseEndpointPort: router.databaseEndpoint.port,
+    databaseEndpointAddress: router.clashLogDb.address,
+    databaseEndpointPort: router.clashLogDb.port,
   };
 }

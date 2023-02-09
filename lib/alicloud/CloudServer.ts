@@ -99,7 +99,7 @@ export class CloudServer extends pulumi.ComponentResource implements Host {
   }
 }
 
-function determineZoneId(): pulumi.Output<string> {
+export function determineZoneId(): pulumi.Output<string> {
   return alicloud.getZonesOutput({
     availableDiskCategory: "cloud_efficiency",
     availableInstanceType: "ecs.t5-lc2m1.nano",

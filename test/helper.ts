@@ -1,24 +1,43 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
+import * as pulumi from "@pulumi/pulumi";
 import project from "../package.json";
 import {
   InlineProgramArgs,
   LocalWorkspace,
   PulumiFn,
   Stack,
-  UpResult,
 } from "@pulumi/pulumi/automation";
 import { waitConnectSuccess } from "../lib/utils";
 import { Ansible } from "../lib/Ansible";
 import { KeyPairHolder } from "../lib/ssh";
+import _ from "lodash";
 
-export const stackHolder: { stack?: Stack } = {};
+export async function assertConnectSuccess(
+  host: string,
+  port: number
+): Promise<void> {
+  await waitConnectSuccess(host, port, 300 * 1000);
+}
 
-export async function applyProgram(
+class PulumiTestingContext {
+  tmpdir?: string;
+  ansible?: Ansible;
+
+  getAnsible = async () => {
+    if (!this.ansible) {
+      this.tmpdir = await fs.mkdtemp(path.join(os.tmpdir(), "fanqiang-"));
+      this.ansible = await Ansible.create(new KeyPairHolder(this.tmpdir).get);
+    }
+    return this.ansible;
+  };
+}
+
+export async function createStack(
   program: PulumiFn,
   stackConfig?: Record<string, string>
-): Promise<UpResult> {
+): Promise<Stack> {
   const stackArgs: InlineProgramArgs = {
     stackName: "test",
     projectName: project.name,
@@ -32,40 +51,44 @@ export async function applyProgram(
       await stack.setConfig(k, { value: stackConfig[k] });
     }
   }
-  console.log("Downloading plugins...");
+  console.debug("Downloading plugins...");
   await stack.workspace.installPlugin("aws", "v5.3.0");
   await stack.workspace.installPlugin("alicloud", "v3.19.0");
-  console.log("Plugin download completed!");
-  stackHolder.stack = stack;
-  return stack.up({
-    onOutput: console.log,
-    onEvent: (event) => {
-      if (
-        event.diagnosticEvent?.severity == "error" ||
-        event.diagnosticEvent?.severity == "info#err"
-      ) {
-        throw new Error(event.diagnosticEvent.message);
-      }
-    },
-  });
+  console.debug("Plugin download completed!");
+  return stack;
 }
 
-export async function applyProvisionProgram(
-  program: (ansible: Ansible) => ReturnType<PulumiFn>
+export async function pulumiit(
+  title: string,
+  program: (getAnsible: () => Promise<Ansible>) => ReturnType<PulumiFn>,
+  asserts: (outputs: Record<string, any>) => void | Promise<void>,
+  stackConfig?: Record<string, string>
 ) {
-  const tmpdir = await fs.mkdtemp(path.join(os.tmpdir(), "fanqiang-"));
-  try {
-    const keyPairHolder = new KeyPairHolder(tmpdir);
-    const ansilbe = await Ansible.create(keyPairHolder.get);
-    return applyProgram(() => program(ansilbe));
-  } finally {
-    await fs.rm(tmpdir, { recursive: true });
-  }
-}
-
-export async function assertConnectSuccess(
-  host: string,
-  port: number
-): Promise<void> {
-  await waitConnectSuccess(host, port, 300 * 1000);
+  it(title, async () => {
+    const context = new PulumiTestingContext();
+    let stack: Stack | undefined;
+    try {
+      stack = await createStack(() => program(context.getAnsible), stackConfig);
+      const result = await stack.up({
+        onOutput: (out) => process.stdout.write(out),
+        onEvent: (event) => {
+          if (
+            event.diagnosticEvent?.severity == "error" ||
+            event.diagnosticEvent?.severity == "info#err"
+          ) {
+            throw new Error(event.diagnosticEvent.message);
+          }
+        },
+      });
+      await asserts(_.mapValues(result.outputs, (o) => o.value));
+    } finally {
+      if (context.tmpdir) {
+        await fs.rm(context.tmpdir, { recursive: true });
+      }
+      if (stack) {
+        await stack.destroy({ onOutput: console.log });
+        await stack.workspace.removeStack(stack.name);
+      }
+    }
+  });
 }

@@ -1,17 +1,18 @@
 import * as pulumi from "@pulumi/pulumi";
 import { assert } from "chai";
-import { applyProgram } from "./helper";
+import { pulumiit } from "./helper";
 
 describe("pulumi", () => {
   describe("output apply", () => {
-    it("output apply will execute before infrastructure construction complete", async () => {
-      const result = await applyProgram(async function () {
+    pulumiit(
+      "output apply will execute before infrastructure construction complete",
+      async () => {
         const foo = new Foo();
         const bar = new Bar(foo);
         return { count: pulumi.output(undefined).apply(() => bar.count) };
-      });
-      assert.equal(result.outputs["count"].value, 7);
-    });
+      },
+      (result) => assert.equal(result.count, 7)
+    );
   });
 });
 

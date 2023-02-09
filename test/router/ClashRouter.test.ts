@@ -1,12 +1,13 @@
-import { applyProvisionProgram, assertConnectSuccess } from "../helper";
+import { assertConnectSuccess, pulumiit } from "../helper";
 import { ClashRouter } from "../../lib/router/ClashRouter";
 import { BucketOperations } from "../../lib/aws/BucketOperations";
 
 describe("ClashRouter", function () {
-  it("apply clash router", async function () {
-    const result = await applyProvisionProgram(async (ansible) => {
+  pulumiit(
+    "apply clash router",
+    async (ansible) => {
       const host = new ClashRouter(
-        ansible,
+        await ansible(),
         new BucketOperations("fanqiang-test"),
         {
           hosts: {
@@ -22,8 +23,7 @@ describe("ClashRouter", function () {
         { user: "guanliyuan", password: "Secret#1", name: "foo" }
       );
       return { host: host.ipAddress };
-    });
-    const ip = result.outputs["host"].value;
-    await assertConnectSuccess(ip, 8388);
-  });
+    },
+    (result) => assertConnectSuccess(result.host, 8388)
+  );
 });

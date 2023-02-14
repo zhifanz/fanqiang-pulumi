@@ -1,3 +1,10 @@
 name: fanqiang
 runtime: nodejs
 description: Fanqiang infrastructure auto deployment
+config:
+  aws:region: us-east-1
+  bucket: fanqiang
+  encryption: aes-256-gcm
+  port: 8388
+  scale: minimal
+  alicloud:region: cn-hangzhou

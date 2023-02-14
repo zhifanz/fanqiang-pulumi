@@ -28,14 +28,16 @@ This project contains pulumi program to create tunnel proxy infrastructures on A
 ## Prerequisites
 
 - Has [**Nodejs**][1] installed on local machine.
-- Has [**Pulumi**][2] installed on local machine.
-- Has [**Ansible**][3] installed on local machine.
-- Has [**psql**][4] installed on local machine. (This is only required when your infra scale is _moderate_ or _ultimate_)
+- Has [**Python**][2] installed on local machine.
+- Has [**Pulumi**][3] installed on local machine.
+- Has [**Ansible**][4] installed on local machine.
+- Has [**psql**][5] installed on local machine. (This is only required when your infra scale is _moderate_ or _ultimate_)
 
 [1]: https://nodejs.org/en/
-[2]: https://www.pulumi.com/
-[3]: https://docs.ansible.com/ansible/latest/getting_started/index.html
-[4]: https://www.postgresql.org/
+[2]: https://docs.python.org/
+[3]: https://www.pulumi.com/
+[4]: https://docs.ansible.com/ansible/latest/getting_started/index.html
+[5]: https://www.postgresql.org/
 
 ## Provider Configuration
 

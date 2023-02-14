@@ -3,18 +3,15 @@ import * as pulumi from "@pulumi/pulumi";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import * as os from "node:os";
-import { GetKeyPairFunc } from "./ssh";
 
 export class Ansible {
   constructor(readonly publicKey: string, readonly keyFile?: string) {}
 
-  static async create(keyPairFactory: GetKeyPairFunc): Promise<Ansible> {
+  static async create(): Promise<Ansible> {
     let keyFile: string | undefined;
     let publicKey = await loadDefaultPublicKey();
     if (!publicKey) {
-      const keyPair = await keyPairFactory();
-      publicKey = await keyPair.publicKey;
-      keyFile = keyPair.privateKeyFile;
+      throw new Error("No existing key pair is found!");
     }
     return new Ansible(publicKey, keyFile);
   }

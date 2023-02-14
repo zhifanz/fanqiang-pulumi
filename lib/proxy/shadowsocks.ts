@@ -1,6 +1,5 @@
 import * as path from "node:path";
 import * as pulumi from "@pulumi/pulumi";
-import * as aws from "@pulumi/aws";
 import _ from "lodash";
 import { Ansible } from "../Ansible";
 import { LightsailInstance } from "../aws/LightsailInstance";

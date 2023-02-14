@@ -1,9 +1,4 @@
 import * as pulumi from "@pulumi/pulumi";
-import path from "node:path";
-import os from "node:os";
-import fs from "node:fs/promises";
-
-import { KeyPairHolder } from "./ssh";
 import { BucketOperations } from "./aws/BucketOperations";
 import { Ansible } from "./Ansible";
 import { Encryption, ShadowsocksProperties } from "./proxy/shadowsocks";
@@ -19,9 +14,7 @@ import {
 
 async function loadContext(): Promise<Context & { scale: string }> {
   const stackConfig = new pulumi.Config();
-  const tmpdir = await fs.mkdtemp(path.join(os.tmpdir(), "fanqiang-"));
-  const keyPairHolder = new KeyPairHolder(tmpdir);
-  const ansible = await Ansible.create(keyPairHolder.get);
+  const ansible = await Ansible.create();
   const bucketOperations = new BucketOperations(stackConfig.require("bucket"));
   const ssprops: ShadowsocksProperties = {
     encryption: stackConfig.require<Encryption>("encryption"),
@@ -33,7 +26,6 @@ async function loadContext(): Promise<Context & { scale: string }> {
     publicKeys = stackConfig.require("publicKeys").split(",");
   }
   return {
-    tmpdir,
     ansible,
     bucketOperations,
     ssprops,
@@ -44,26 +36,22 @@ async function loadContext(): Promise<Context & { scale: string }> {
 
 export async function apply() {
   const context = await loadContext();
-  try {
-    let handler: AbstractHandler;
-    switch (context.scale) {
-      case "minimal":
-        handler = new Minimal();
-        break;
-      case "moderate":
-        handler = new Moderate();
-        break;
-      case "premium":
-        handler = new Premium();
-        break;
-      case "ultimate":
-        handler = new Ultimate();
-        break;
-      default:
-        throw new Error("Unsupported scale: " + context.scale);
-    }
-    return handler.process(context);
-  } finally {
-    await fs.rm(context.tmpdir, { recursive: true });
+  let handler: AbstractHandler;
+  switch (context.scale) {
+    case "minimal":
+      handler = new Minimal();
+      break;
+    case "moderate":
+      handler = new Moderate();
+      break;
+    case "premium":
+      handler = new Premium();
+      break;
+    case "ultimate":
+      handler = new Ultimate();
+      break;
+    default:
+      throw new Error("Unsupported scale: " + context.scale);
   }
+  return handler.process(context);
 }

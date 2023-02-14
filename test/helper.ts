@@ -22,13 +22,11 @@ export async function assertConnectSuccess(
 }
 
 class PulumiTestingContext {
-  tmpdir?: string;
   ansible?: Ansible;
 
   getAnsible = async () => {
     if (!this.ansible) {
-      this.tmpdir = await fs.mkdtemp(path.join(os.tmpdir(), "fanqiang-"));
-      this.ansible = await Ansible.create(new KeyPairHolder(this.tmpdir).get);
+      this.ansible = await Ansible.create();
     }
     return this.ansible;
   };
@@ -82,9 +80,6 @@ export async function pulumiit(
       });
       await asserts(_.mapValues(result.outputs, (o) => o.value));
     } finally {
-      if (context.tmpdir) {
-        await fs.rm(context.tmpdir, { recursive: true });
-      }
       if (stack) {
         await stack.destroy({ onOutput: console.log });
         await stack.workspace.removeStack(stack.name);

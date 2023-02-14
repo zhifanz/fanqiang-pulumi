@@ -1,6 +1,6 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
-import { createStack, assertConnectSuccess, pulumiit } from "../helper";
+import { assertConnectSuccess, pulumiit } from "../helper";
 import { assert } from "chai";
 import { NginxTunnel } from "../../lib/forwardtunnel/NginxTunnel";
 

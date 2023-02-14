@@ -18,7 +18,6 @@ type ApplyInfraResult = {
   [k: string]: any;
 };
 export interface Context {
-  tmpdir: string;
   ansible: Ansible;
   bucketOperations: BucketOperations;
   ssprops: ShadowsocksProperties;

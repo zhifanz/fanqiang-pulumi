@@ -1,0 +1,6 @@
+node_modules
+test
+.*
+Pulumi.*.yaml
+README.md
+Dockerfile

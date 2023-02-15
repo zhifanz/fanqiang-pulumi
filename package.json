@@ -1,5 +1,11 @@
 {
   "name": "fanqiang-pulumi",
+  "version": "0.0.0-development",
+  "description": "tunnel proxy auto deployment",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zhifanz/fanqiang-pulumi.git"
+  },
   "dependencies": {
     "@pulumi/alicloud": "^3.19.0",
     "@pulumi/aws": "^5.15.0",

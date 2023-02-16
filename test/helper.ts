@@ -1,7 +1,3 @@
-import fs from "node:fs/promises";
-import path from "node:path";
-import os from "node:os";
-import * as pulumi from "@pulumi/pulumi";
 import project from "../package.json";
 import {
   InlineProgramArgs,
@@ -11,7 +7,6 @@ import {
 } from "@pulumi/pulumi/automation";
 import { waitConnectSuccess } from "../lib/utils";
 import { Ansible } from "../lib/Ansible";
-import { KeyPairHolder } from "../lib/ssh";
 import _ from "lodash";
 
 export async function assertConnectSuccess(

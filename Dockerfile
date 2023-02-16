@@ -3,7 +3,7 @@ FROM pulumi/pulumi:3.53.1
 ARG ANSIBLE_VERSION=7.2
 ARG PSQL_VERSION=13
 
-ENV PULUMI_CONFIG_PASSPHRASE=SimplePassPhrase
+LABEL org.opencontainers.image.source=https://github.com/zhifanz/fanqiang-pulumi
 
 RUN pip install "ansible~=$ANSIBLE_VERSION" && \
     apt-get install postgresql-client-$PSQL_VERSION -y && \

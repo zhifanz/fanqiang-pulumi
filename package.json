@@ -6,6 +6,39 @@
     "type": "git",
     "url": "https://github.com/zhifanz/fanqiang-pulumi.git"
   },
+  "private": true,
+  "release": {
+    "plugins": [
+      "@semantic-release/commit-analyzer",
+      "@semantic-release/release-notes-generator",
+      "@semantic-release/changelog",
+      [
+        "@semantic-release/npm",
+        {
+          "tarballDir": "dist"
+        }
+      ],
+      [
+        "@semantic-release-plus/docker",
+        {
+          "name": "zhifanz/fanqiang-pulumi",
+          "registry": "ghcr.io"
+        }
+      ],
+      [
+        "@semantic-release/github",
+        {
+          "assets": "dist"
+        }
+      ]
+    ]
+  },
+  "files": [
+    "Pulumi.yaml",
+    "package-lock.json",
+    "index.ts",
+    "lib"
+  ],
   "dependencies": {
     "@pulumi/alicloud": "^3.19.0",
     "@pulumi/aws": "^5.15.0",

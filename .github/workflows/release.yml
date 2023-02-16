@@ -19,7 +19,7 @@ jobs:
       - name: Install dependencies
         run: npm install --global semantic-release @semantic-release/changelog @semantic-release-plus/docker
       - name: Build docker image
-        run: docker build --tag $(jq .release.plugins[4][1].name package.json) .
+        run: docker build --tag $(jq --raw-output ".release.plugins[4][1].name" package.json) .
       - name: Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

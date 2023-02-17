@@ -18,6 +18,7 @@
           "tarballDir": "dist"
         }
       ],
+      "@semantic-release/git",
       [
         "@semantic-release-plus/docker",
         {

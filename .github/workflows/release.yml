@@ -17,7 +17,7 @@ jobs:
         with:
           node-version: "lts/*"
       - name: Install dependencies
-        run: npm install --global semantic-release @semantic-release/changelog @semantic-release-plus/docker
+        run: npm install --global semantic-release @semantic-release/changelog @semantic-release-plus/docker @semantic-release/git
       - name: Build docker image
         run: docker build --tag $(jq --raw-output ".release.plugins[4][1].name" package.json) .
       - name: Release

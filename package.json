@@ -8,33 +8,6 @@
   },
   "license": "MIT",
   "private": true,
-  "release": {
-    "plugins": [
-      "@semantic-release/commit-analyzer",
-      "@semantic-release/release-notes-generator",
-      "@semantic-release/changelog",
-      [
-        "@semantic-release/npm",
-        {
-          "tarballDir": "dist"
-        }
-      ],
-      "@semantic-release/git",
-      [
-        "@semantic-release-plus/docker",
-        {
-          "name": "zhifanz/fanqiang-pulumi",
-          "registry": "ghcr.io"
-        }
-      ],
-      [
-        "@semantic-release/github",
-        {
-          "assets": "dist"
-        }
-      ]
-    ]
-  },
   "files": [
     "Pulumi.yaml",
     "tsconfig.json",

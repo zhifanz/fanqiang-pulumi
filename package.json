@@ -6,6 +6,7 @@
     "type": "git",
     "url": "https://github.com/zhifanz/fanqiang-pulumi.git"
   },
+  "license": "MIT",
   "private": true,
   "release": {
     "plugins": [

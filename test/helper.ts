@@ -63,7 +63,7 @@ export async function pulumiit(
     try {
       stack = await createStack(() => program(context.getAnsible), stackConfig);
       const result = await stack.up({
-        onOutput: (out) => process.stdout.write(out),
+        onOutput: process.stdout.write,
         onEvent: (event) => {
           if (
             event.diagnosticEvent?.severity == "error" ||
@@ -76,7 +76,7 @@ export async function pulumiit(
       await asserts(_.mapValues(result.outputs, (o) => o.value));
     } finally {
       if (stack) {
-        await stack.destroy({ onOutput: console.log });
+        await stack.destroy({ onOutput: process.stdout.write });
         await stack.workspace.removeStack(stack.name);
       }
     }

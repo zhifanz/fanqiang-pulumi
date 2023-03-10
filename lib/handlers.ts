@@ -8,6 +8,7 @@ import { NginxTunnel } from "./forwardtunnel/NginxTunnel";
 import { ClashRouter } from "./router/ClashRouter";
 import { ProxyCluster } from "./proxy/cluster";
 import { Host } from "./domain";
+import { AwsEcsFargateShadowsocks } from "./proxy/AwsEcsFargateShadowsocks";
 
 type ApplyResult = {
   clientConfigUrl: pulumi.Output<string>;
@@ -43,11 +44,7 @@ export abstract class AbstractHandler {
 
 export class Minimal extends AbstractHandler {
   protected applyInfra(context: Context): ApplyInfraResult {
-    let host: Host = new ShadowsocksServer(
-      context.ssprops,
-      context.ansible,
-      ...context.publicKeys
-    );
+    let host: Host = new AwsEcsFargateShadowsocks(context.ssprops);
     host = this.extendsProxy(context, host);
     const clashParams = host.ipAddress.apply((host) => ({
       ...context.ssprops,

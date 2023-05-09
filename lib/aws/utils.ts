@@ -8,3 +8,7 @@ export function getRegion(): pulumi.Output<string> {
 export function getAccountId(): pulumi.Output<string> {
   return pulumi.output(aws.getCallerIdentity()).accountId;
 }
+
+export function extractContinent(region: string): string {
+  return region.substring(0, region.indexOf("-"));
+}

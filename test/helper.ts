@@ -45,7 +45,7 @@ export async function createStack(
     }
   }
   console.debug("Downloading plugins...");
-  await stack.workspace.installPlugin("aws", "v5.3.0");
+  await stack.workspace.installPlugin("aws", "v5.15.0");
   await stack.workspace.installPlugin("alicloud", "v3.19.0");
   console.debug("Plugin download completed!");
   return stack;
@@ -63,7 +63,7 @@ export async function pulumiit(
     try {
       stack = await createStack(() => program(context.getAnsible), stackConfig);
       const result = await stack.up({
-        onOutput: process.stdout.write,
+        onOutput: (out) => process.stdout.write(out),
         onEvent: (event) => {
           if (
             event.diagnosticEvent?.severity == "error" ||
@@ -76,7 +76,7 @@ export async function pulumiit(
       await asserts(_.mapValues(result.outputs, (o) => o.value));
     } finally {
       if (stack) {
-        await stack.destroy({ onOutput: process.stdout.write });
+        await stack.destroy({ onOutput: (out) => process.stdout.write(out) });
         await stack.workspace.removeStack(stack.name);
       }
     }

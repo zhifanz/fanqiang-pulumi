@@ -6,7 +6,7 @@ import { BucketOperations } from "../aws/BucketOperations";
 import { CloudServer } from "../alicloud/CloudServer";
 import { DEFAULT_RESOURCE_NAME } from "../utils";
 import * as cloudconfig from "../cloudinit/cloudconfig";
-import { ShadowsocksProperties } from "../proxy/shadowsocks";
+import { ShadowsocksProperties } from "../proxy/ShadowsocksServer";
 import { Ansible } from "../Ansible";
 
 import { Host } from "../domain";

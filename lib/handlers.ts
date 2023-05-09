@@ -2,13 +2,15 @@ import * as pulumi from "@pulumi/pulumi";
 import _ from "lodash";
 import { Ansible } from "./Ansible";
 import { BucketOperations } from "./aws/BucketOperations";
-import { ShadowsocksProperties, ShadowsocksServer } from "./proxy/shadowsocks";
+import {
+  ShadowsocksProperties,
+  ShadowsocksServer,
+} from "./proxy/ShadowsocksServer";
 import * as client from "./client/configuration";
 import { NginxTunnel } from "./forwardtunnel/NginxTunnel";
 import { ClashRouter } from "./router/ClashRouter";
-import { ProxyCluster } from "./proxy/cluster";
+import { MultiRegionProxyCluster } from "./proxy/MultiRegionProxyCluster";
 import { Host } from "./domain";
-import { AwsEcsFargateShadowsocks } from "./proxy/AwsEcsFargateShadowsocks";
 
 type ApplyResult = {
   clientConfigUrl: pulumi.Output<string>;
@@ -44,7 +46,7 @@ export abstract class AbstractHandler {
 
 export class Minimal extends AbstractHandler {
   protected applyInfra(context: Context): ApplyInfraResult {
-    let host: Host = new AwsEcsFargateShadowsocks(context.ssprops);
+    let host: Host = new ShadowsocksServer(context.ssprops);
     host = this.extendsProxy(context, host);
     const clashParams = host.ipAddress.apply((host) => ({
       ...context.ssprops,
@@ -99,23 +101,17 @@ abstract class RouterHandler extends AbstractHandler {
 
 export class Premium extends RouterHandler {
   protected createProxies(context: Context) {
-    const proxy = new ShadowsocksServer(
-      context.ssprops,
-      context.ansible,
-      ...context.publicKeys
-    );
+    const proxy = new ShadowsocksServer(context.ssprops);
     return { default: proxy.ipAddress };
   }
 }
 
 export class Ultimate extends RouterHandler {
   protected createProxies(context: Context) {
-    const proxyCluster = new ProxyCluster(
-      context.ssprops,
-      context.ansible,
-      ["ap-northeast-1", "eu-central-1"],
-      ...context.publicKeys
-    );
+    const proxyCluster = new MultiRegionProxyCluster(context.ssprops, [
+      "ap-northeast-1",
+      "eu-central-1",
+    ]);
     return {
       default: proxyCluster.default.ipAddress,
       extra: _.mapValues(proxyCluster.extra, (v) => v.ipAddress),

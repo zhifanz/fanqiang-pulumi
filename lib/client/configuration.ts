@@ -1,5 +1,5 @@
 import nunjucks from "nunjucks";
-import { ShadowsocksProperties } from "../proxy/shadowsocks";
+import { ShadowsocksProperties } from "../proxy/ShadowsocksServer";
 
 const template = nunjucks.configure(__dirname, {
   trimBlocks: true,

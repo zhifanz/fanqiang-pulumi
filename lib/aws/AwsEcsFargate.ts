@@ -1,24 +1,32 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
-import { DEFAULT_RESOURCE_NAME } from "../utils";
-import { ShadowsocksProperties } from "./shadowsocks";
 import { Host } from "../domain";
 import { getRegion } from "../aws/utils";
+import { DEFAULT_RESOURCE_NAME } from "../utils";
 
-export class AwsEcsFargateShadowsocks
-  extends pulumi.ComponentResource
-  implements Host
-{
+export type ContainerInputs = {
+  name: string;
+  image: string;
+  port: number;
+  command: string[];
+};
+
+export class AwsEcsFargate extends pulumi.ComponentResource implements Host {
   private readonly vpc: Vpc;
   private readonly service: aws.ecs.Service;
-  constructor(props: ShadowsocksProperties) {
-    super("fanqiang:aws:AwsEcsShadowsocks", DEFAULT_RESOURCE_NAME);
-    this.vpc = new Vpc(props.port, this);
-    const cluster = new aws.ecs.Cluster("ssserver-default", undefined, {
+  constructor(
+    containerInputs: ContainerInputs,
+    opts?: { logGroup?: aws.cloudwatch.LogGroup; provider?: aws.Provider }
+  ) {
+    super("fanqiang:aws:AwsEcsFargate", containerInputs.name, undefined, {
+      providers: opts?.provider && { aws: opts?.provider },
+    });
+    this.vpc = new Vpc(containerInputs.name, containerInputs.port, this);
+    const cluster = new aws.ecs.Cluster(containerInputs.name, undefined, {
       parent: this,
     });
     new aws.ecs.ClusterCapacityProviders(
-      DEFAULT_RESOURCE_NAME,
+      containerInputs.name,
       {
         clusterName: cluster.name,
         capacityProviders: ["FARGATE_SPOT"],
@@ -28,13 +36,17 @@ export class AwsEcsFargateShadowsocks
       },
       { parent: this }
     );
-    const containerDefinition = new ContainerDefinition(props, this);
+
     const task = new aws.ecs.TaskDefinition(
-      DEFAULT_RESOURCE_NAME,
+      containerInputs.name,
       {
-        containerDefinitions: containerDefinition.toJsonString(),
-        executionRoleArn: containerDefinition.executionRole.arn,
-        family: "shadowsocks",
+        containerDefinitions: pulumi
+          .all([getRegion(), opts?.logGroup?.name])
+          .apply(([region, logGroup]) =>
+            JSON.stringify([container(containerInputs, region, logGroup)])
+          ),
+        executionRoleArn: this.executionRole(containerInputs.name).arn,
+        family: containerInputs.name,
         networkMode: "awsvpc",
         cpu: ".25 vCPU",
         memory: "0.5 GB",
@@ -47,11 +59,11 @@ export class AwsEcsFargateShadowsocks
       { parent: this }
     );
     this.service = new aws.ecs.Service(
-      DEFAULT_RESOURCE_NAME,
+      containerInputs.name,
       {
         cluster: cluster.arn,
         taskDefinition: task.arn,
-        name: "shadowsocks",
+        name: containerInputs.name,
         networkConfiguration: {
           subnets: [this.vpc.subnet.id],
           securityGroups: [this.vpc.securityGroup.id],
@@ -65,23 +77,7 @@ export class AwsEcsFargateShadowsocks
     );
   }
 
-  get ipAddress(): pulumi.Output<string> {
-    return this.service.id.apply(
-      () =>
-        aws.ec2.getNetworkInterfaceOutput({
-          filters: [{ name: "vpc-id", values: [this.vpc.vpc.id] }],
-        }).associations[0].publicIp
-    );
-  }
-}
-
-class ContainerDefinition {
-  readonly logGroup: aws.cloudwatch.LogGroup;
-  readonly executionRole: aws.iam.Role;
-  constructor(readonly props: ShadowsocksProperties, parent: pulumi.Resource) {
-    this.logGroup = new aws.cloudwatch.LogGroup("fanqiang", undefined, {
-      parent,
-    });
+  private executionRole(name: string) {
     const assumeRolePolicy = aws.iam.getPolicyDocumentOutput({
       statements: [
         {
@@ -95,8 +91,8 @@ class ContainerDefinition {
         },
       ],
     });
-    this.executionRole = new aws.iam.Role(
-      "awslogs-rw",
+    return new aws.iam.Role(
+      `${name}-fargate-execution-role`,
       {
         assumeRolePolicy: assumeRolePolicy.json,
         forceDetachPolicies: true,
@@ -104,62 +100,59 @@ class ContainerDefinition {
           "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy",
         ],
       },
-      { parent }
+      { parent: this }
     );
   }
-  private containers(region: string, logGroup: string) {
-    return [
-      {
-        name: "ssserver",
-        image: "ghcr.io/shadowsocks/ssserver-rust:v1.15.2",
-        portMappings: [
-          { containerPort: this.props.port, hostPort: this.props.port },
-        ],
-        essential: true,
-        command: [
-          "ssserver",
-          "--log-without-time",
-          "-s",
-          `[::]:${this.props.port}`,
-          "-m",
-          this.props.encryption,
-          "-k",
-          this.props.password,
-        ],
-        logConfiguration: {
-          logDriver: "awslogs",
-          options: {
-            "awslogs-group": logGroup,
-            "awslogs-region": region,
-            "awslogs-stream-prefix": "ssserver",
+
+  get ipAddress(): pulumi.Output<string> {
+    return this.service.id.apply(
+      () =>
+        aws.ec2.getNetworkInterfaceOutput(
+          {
+            filters: [{ name: "vpc-id", values: [this.vpc.vpc.id] }],
           },
-        },
+          { parent: this }
+        ).associations[0].publicIp
+    );
+  }
+}
+
+function container(inputs: ContainerInputs, region: string, logGroup?: string) {
+  const result: any = {
+    name: inputs.name,
+    image: inputs.image,
+    portMappings: [{ containerPort: inputs.port, hostPort: inputs.port }],
+    essential: true,
+    command: inputs.command,
+  };
+  if (logGroup) {
+    result.logConfiguration = {
+      logDriver: "awslogs",
+      options: {
+        "awslogs-group": logGroup,
+        "awslogs-region": region,
+        "awslogs-stream-prefix": "ssserver",
+        mode: "non-blocking",
       },
-    ];
+    };
   }
-  toJsonString(): pulumi.Output<string> {
-    return pulumi
-      .all([getRegion(), this.logGroup.name])
-      .apply(([region, logGroup]) =>
-        JSON.stringify(this.containers(region, logGroup))
-      );
-  }
+  return result;
 }
 
 class Vpc {
   readonly vpc: aws.ec2.Vpc;
   readonly subnet: aws.ec2.Subnet;
   readonly securityGroup: aws.ec2.SecurityGroup;
-  constructor(port: number, parent: pulumi.Resource) {
+  constructor(name: string, port: number, parent: pulumi.Resource) {
     this.vpc = new aws.ec2.Vpc(
-      DEFAULT_RESOURCE_NAME,
+      `${name}-fargate-vpc`,
       {
         cidrBlock: "192.168.0.0/16",
       },
       { parent }
     );
     this.subnet = new aws.ec2.Subnet(
-      DEFAULT_RESOURCE_NAME,
+      `${name}-fargate-subnet`,
       {
         vpcId: this.vpc.id,
         cidrBlock: `192.168.0.0/24`,
@@ -167,10 +160,10 @@ class Vpc {
       { parent }
     );
     this.securityGroup = new aws.ec2.SecurityGroup(
-      DEFAULT_RESOURCE_NAME,
+      `${name}-fargate-security-group`,
       {
         vpcId: this.vpc.id,
-        description: "For shadowsocks ecs fragate cluster",
+        description: "For ecs fragate cluster",
         ingress: [
           {
             protocol: "tcp",
@@ -186,14 +179,14 @@ class Vpc {
       { parent }
     );
     const gateway = new aws.ec2.InternetGateway(
-      DEFAULT_RESOURCE_NAME,
+      `${name}-fargate-gateway`,
       {
         vpcId: this.vpc.id,
       },
       { parent }
     );
     new aws.ec2.Route(
-      DEFAULT_RESOURCE_NAME,
+      `${name}-fargate-route`,
       {
         routeTableId: this.vpc.mainRouteTableId,
         destinationCidrBlock: "0.0.0.0/0",

@@ -32,8 +32,7 @@ export abstract class AbstractHandler {
     const outputs = this.applyInfra(context);
     const configObject = context.bucketOperations.uploadContent(
       "clash/config.yaml",
-      outputs.clashParams.apply((v) => client.render(v)),
-      { publicRead: true }
+      outputs.clashParams.apply((v) => client.render(v))
     );
     return {
       clientConfigUrl: context.bucketOperations.getUrl(configObject.key),

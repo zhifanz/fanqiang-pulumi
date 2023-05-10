@@ -113,10 +113,7 @@ export class ClashRouter extends pulumi.ComponentResource implements Host {
     const result = bucket.uploadContent(
       `clash/rules/${name}-domains.yml`,
       fs.readFile(path.join(__dirname, "domains.yml"), "utf8"),
-      {
-        parent: this,
-        publicRead: true,
-      }
+      this
     );
     return bucket.getUrl(result.key);
   }

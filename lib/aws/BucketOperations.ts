@@ -3,8 +3,6 @@ import * as aws from "@pulumi/aws";
 import * as path from "node:path";
 import { DEFAULT_RESOURCE_NAME } from "../utils";
 
-type Options = { parent?: pulumi.Resource; publicRead?: boolean };
-
 export class BucketOperations {
   private readonly bucket: aws.s3.Bucket;
   constructor(readonly bucketName: string) {
@@ -12,6 +10,30 @@ export class BucketOperations {
       forceDestroy: true,
       bucket: bucketName,
     });
+    new aws.s3.BucketPolicy(
+      DEFAULT_RESOURCE_NAME,
+      {
+        bucket: this.bucket.id,
+        policy: this.bucket.arn.apply((arn) =>
+          JSON.stringify({
+            Version: "2012-10-17",
+            Statement: [
+              {
+                Effect: "Allow",
+                Principal: "*",
+                Action: ["s3:GetObject"],
+                Resource: [`${arn}/*`],
+              },
+            ],
+          })
+        ),
+      },
+      {
+        dependsOn: new aws.s3.BucketPublicAccessBlock(DEFAULT_RESOURCE_NAME, {
+          bucket: this.bucket.id,
+        }),
+      }
+    );
   }
 
   getUri(path: string): string {
@@ -30,50 +52,19 @@ export class BucketOperations {
     return this.bucket.arn;
   }
 
-  uploadSource(
-    key: string,
-    filePath: string,
-    options: Options = {}
-  ): aws.s3.BucketObject {
-    return this.upload(
-      key,
-      (args) => {
-        args.source = new pulumi.asset.FileAsset(filePath);
-      },
-      options
-    );
-  }
-
   uploadContent(
     key: string,
     content: pulumi.Input<string>,
-    options: Options = {}
+    parent?: pulumi.Resource
   ): aws.s3.BucketObject {
-    return this.upload(
-      key,
-      (args) => {
-        args.content = content;
+    return new aws.s3.BucketObject(
+      path.basename(key),
+      {
+        bucket: this.bucket.id,
+        key,
+        content,
       },
-      options
+      parent && { parent }
     );
-  }
-
-  private upload(
-    key: string,
-    extendArgs: (basicArgs: aws.s3.BucketObjectArgs) => void,
-    opts?: Options
-  ): aws.s3.BucketObject {
-    const args: aws.s3.BucketObjectArgs = {
-      bucket: this.bucket.id,
-      key,
-      forceDestroy: true,
-    };
-    if (opts?.publicRead) {
-      args.acl = "public-read";
-    }
-    extendArgs(args);
-    return new aws.s3.BucketObject(path.basename(key), args, {
-      parent: opts?.parent,
-    });
   }
 }

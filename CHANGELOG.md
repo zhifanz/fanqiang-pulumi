@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/zhifanz/fanqiang-pulumi/compare/v1.0.0...v1.0.1) (2023-05-10)
+
+
+### Bug Fixes
+
+* use resource policy for public access of s3 objects ([b981b74](https://github.com/zhifanz/fanqiang-pulumi/commit/b981b740682170995ef6f26b967f773562e06dc8))
+
 # 1.0.0 (2023-02-17)
 
 

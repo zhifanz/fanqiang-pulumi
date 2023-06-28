@@ -2,7 +2,6 @@ import * as pulumi from "@pulumi/pulumi";
 import { BucketOperations } from "./aws/BucketOperations";
 import { Ansible } from "./Ansible";
 import { Encryption, ShadowsocksProperties } from "./proxy/ShadowsocksServer";
-import _ from "lodash";
 import {
   AbstractHandler,
   Context,

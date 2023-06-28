@@ -2,6 +2,6 @@
   "exit": true,
   "extension": "ts",
   "recursive": true,
-  "require": ["ts-node/register"],
+  "require": ["ts-node/register", "dotenv/config", "test/hooks.js"],
   "timeout": 0
 }

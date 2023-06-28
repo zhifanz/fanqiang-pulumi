@@ -2,7 +2,6 @@ import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
 import { Host } from "../domain";
 import { getRegion } from "../aws/utils";
-import { DEFAULT_RESOURCE_NAME } from "../utils";
 
 export type ContainerInputs = {
   name: string;

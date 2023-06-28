@@ -7,10 +7,10 @@ import {
   ShadowsocksServer,
 } from "./proxy/ShadowsocksServer";
 import * as client from "./client/configuration";
-import { NginxTunnel } from "./forwardtunnel/NginxTunnel";
 import { ClashRouter } from "./router/ClashRouter";
 import { MultiRegionProxyCluster } from "./proxy/MultiRegionProxyCluster";
 import { Host } from "./domain";
+import { AlicloudEciSocatTunnel } from "./forwardtunnel/AlicloudEciSocatTunnel";
 
 type ApplyResult = {
   clientConfigUrl: pulumi.Output<string>;
@@ -62,11 +62,10 @@ export class Minimal extends AbstractHandler {
 
 export class Moderate extends Minimal {
   protected extendsProxy(context: Context, proxy: Host): Host {
-    return new NginxTunnel(
-      context.ansible,
-      { ipAddress: proxy.ipAddress, port: context.ssprops.port },
-      ...context.publicKeys
-    );
+    return new AlicloudEciSocatTunnel("socat-tunnel", {
+      ipAddress: proxy.ipAddress,
+      port: context.ssprops.port,
+    });
   }
 }
 

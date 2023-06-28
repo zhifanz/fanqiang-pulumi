@@ -7,4 +7,4 @@ config:
   encryption: aes-256-gcm
   port: 8388
   scale: minimal
-  alicloud:region: cn-hangzhou
+  alicloud:region: cn-shanghai

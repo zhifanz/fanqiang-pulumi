@@ -1,4 +1,3 @@
-import _ from "lodash";
 import * as net from "node:net";
 import promiseRetry from "promise-retry";
 

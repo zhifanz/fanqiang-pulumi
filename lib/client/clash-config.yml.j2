@@ -8,28 +8,18 @@ tun:
 dns:
   enable: true
   listen: 0.0.0.0:1053
-  enhanced-mode: redir-host
   nameserver:
     - 223.5.5.5
     - 119.29.29.29
     - 114.114.114.114
     - tls://dns.rubyfish.cn:853
 proxies:
-{% if encryption %}
   - name: auto
     type: ss
     server: {{ host }}
     port: {{ port }}
     cipher: {{ encryption }}
     password: {{ password }}
-{% else %}
-  - name: auto
-    type: socks5
-    server: {{ host }}
-    port: {{ port }}
-{% endif %}
 rules:
-{% if encryption %}
   - GEOIP,CN,DIRECT
-{% endif %}
   - MATCH,auto

@@ -1,5 +1,4 @@
 import * as aws from "@pulumi/aws";
-import _ from "lodash";
 import { AwsEcsFargate } from "../aws/AwsEcsFargate";
 import { extractContinent } from "../aws/utils";
 

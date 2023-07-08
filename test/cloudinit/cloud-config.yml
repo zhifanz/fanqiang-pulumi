@@ -1,5 +1,0 @@
-#cloud-config
-
-ssh_authorized_keys:
-  - pk1
-  - pk2

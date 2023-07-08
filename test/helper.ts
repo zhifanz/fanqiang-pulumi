@@ -6,7 +6,6 @@ import {
   Stack,
 } from "@pulumi/pulumi/automation";
 import { waitConnectSuccess } from "../lib/utils";
-import { Ansible } from "../lib/Ansible";
 import _ from "lodash";
 
 export async function assertConnectSuccess(
@@ -14,17 +13,6 @@ export async function assertConnectSuccess(
   port: number
 ): Promise<void> {
   await waitConnectSuccess(host, port, 300 * 1000);
-}
-
-class PulumiTestingContext {
-  ansible?: Ansible;
-
-  getAnsible = async () => {
-    if (!this.ansible) {
-      this.ansible = await Ansible.create();
-    }
-    return this.ansible;
-  };
 }
 
 export async function createStack(
@@ -49,15 +37,14 @@ export async function createStack(
 
 export async function pulumiit(
   title: string,
-  program: (getAnsible: () => Promise<Ansible>) => ReturnType<PulumiFn>,
+  program: PulumiFn,
   asserts: (outputs: Record<string, any>) => void | Promise<void>,
   stackConfig?: Record<string, string>
 ) {
   it(title, async () => {
-    const context = new PulumiTestingContext();
     let stack: Stack | undefined;
     try {
-      stack = await createStack(() => program(context.getAnsible), stackConfig);
+      stack = await createStack(program, stackConfig);
       const result = await stack.up({
         onOutput: (out) => process.stdout.write(out),
         onEvent: (event) => {

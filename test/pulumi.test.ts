@@ -17,7 +17,7 @@ describe("pulumi", () => {
 });
 
 class Foo extends pulumi.ComponentResource {
-  count: number = 0;
+  count = 0;
   constructor() {
     super("Foo", "default");
     pulumi.output(undefined).apply(() => (this.count = 7));
@@ -25,7 +25,7 @@ class Foo extends pulumi.ComponentResource {
 }
 
 class Bar extends pulumi.ComponentResource {
-  count: number = 0;
+  count = 0;
   constructor(foo: Foo) {
     super("Bar", "default", undefined, { dependsOn: foo });
     pulumi.output(undefined).apply(() => (this.count = foo.count));

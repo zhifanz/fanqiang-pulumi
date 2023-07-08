@@ -1,3 +1,15 @@
+# [2.0.0](https://github.com/zhifanz/fanqiang-pulumi/compare/v1.0.1...v2.0.0) (2023-07-08)
+
+
+### Features
+
+* remove premium and ultimate scale ([c568368](https://github.com/zhifanz/fanqiang-pulumi/commit/c5683687a572b72538005343962bc9aeff8854a4))
+
+
+### BREAKING CHANGES
+
+* no longer support ip location analysis
+
 ## [1.0.1](https://github.com/zhifanz/fanqiang-pulumi/compare/v1.0.0...v1.0.1) (2023-05-10)
 
 

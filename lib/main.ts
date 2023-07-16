@@ -1,4 +1,5 @@
 import * as pulumi from "@pulumi/pulumi";
+import * as crypto from "node:crypto";
 import { BucketOperations } from "./aws/BucketOperations";
 import { Encryption, ShadowsocksProperties } from "./proxy/ShadowsocksServer";
 import { AbstractHandler, Context, Minimal, Moderate } from "./handlers";
@@ -8,7 +9,8 @@ async function loadContext(): Promise<Context & { scale: string }> {
   const bucketOperations = new BucketOperations(stackConfig.require("bucket"));
   const ssprops: ShadowsocksProperties = {
     encryption: stackConfig.require<Encryption>("encryption"),
-    password: stackConfig.require("password"),
+    password:
+      stackConfig.get("password") || crypto.randomBytes(8).toString("base64"),
     port: stackConfig.requireNumber("port"),
   };
   return {

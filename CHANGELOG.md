@@ -1,3 +1,10 @@
+# [2.1.0](https://github.com/zhifanz/fanqiang-pulumi/compare/v2.0.0...v2.1.0) (2023-07-16)
+
+
+### Features
+
+* auto generate password if not provided ([a9cd8d1](https://github.com/zhifanz/fanqiang-pulumi/commit/a9cd8d1f4495a97d7a4f7f66b5c0c16ae01603a1))
+
 # [2.0.0](https://github.com/zhifanz/fanqiang-pulumi/compare/v1.0.1...v2.0.0) (2023-07-08)
 
 

@@ -47,8 +47,8 @@ export class AwsEcsFargate extends pulumi.ComponentResource implements Host {
         executionRoleArn: this.executionRole(containerInputs.name).arn,
         family: containerInputs.name,
         networkMode: "awsvpc",
-        cpu: ".25 vCPU",
-        memory: "0.5 GB",
+        cpu: "256",
+        memory: "512",
         requiresCompatibilities: ["FARGATE"],
         runtimePlatform: {
           operatingSystemFamily: "LINUX",

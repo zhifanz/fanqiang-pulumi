@@ -6,7 +6,7 @@ const template = nunjucks.configure(__dirname, {
   lstripBlocks: true,
 });
 
-export type ClashParams = Partial<ShadowsocksProperties> & { host: string };
+export type ClashParams = ShadowsocksProperties & { host: string };
 
 export function render(params: ClashParams): string {
   return template.render("clash-config.yml.j2", params);

@@ -9,6 +9,12 @@ export class BucketOperations {
     this.bucket = new aws.s3.Bucket(DEFAULT_RESOURCE_NAME, {
       forceDestroy: true,
       bucket: bucketName,
+      serverSideEncryptionConfiguration: {
+        rule: {
+          bucketKeyEnabled: false,
+          applyServerSideEncryptionByDefault: { sseAlgorithm: "AES256" },
+        },
+      },
     });
     new aws.s3.BucketPolicy(
       DEFAULT_RESOURCE_NAME,

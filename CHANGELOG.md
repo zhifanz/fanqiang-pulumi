@@ -1,3 +1,10 @@
+# [2.2.0](https://github.com/zhifanz/fanqiang-pulumi/compare/v2.1.0...v2.2.0) (2023-07-22)
+
+
+### Features
+
+* add environment variable support for input parameter ([b7a5ebe](https://github.com/zhifanz/fanqiang-pulumi/commit/b7a5ebe542a4c9277fc48e237de1cf3eaca11044))
+
 # [2.1.0](https://github.com/zhifanz/fanqiang-pulumi/compare/v2.0.0...v2.1.0) (2023-07-16)
 
 

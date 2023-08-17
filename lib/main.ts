@@ -13,6 +13,7 @@ import { Host } from "./domain";
 type Configuration = ShadowsocksProperties & {
   bucket: string;
   requireTunnel: boolean;
+  enableIpv6: boolean;
 };
 
 function loadConfiguration(): Configuration {
@@ -23,6 +24,7 @@ function loadConfiguration(): Configuration {
     port: stackConfig.requireNumber("port"),
     bucket: process.env.FANQIANG_BUCKET || stackConfig.require("bucket"),
     requireTunnel: requireTunnel(stackConfig),
+    enableIpv6: !!stackConfig.getBoolean("enableIpv6"),
   };
 }
 
@@ -47,12 +49,16 @@ export async function apply() {
   if (cf.requireTunnel) {
     endpoint = new AlicloudEciSocatTunnel("socat-tunnel", {
       ipAddress: endpoint.ipAddress,
+      ipv6Address: endpoint.ipv6Address,
       port: cf.port,
     });
   }
   const configObject = bucketOperations.uploadContent(
     "clash/config.yaml",
-    endpoint.ipAddress.apply((host) => client.render({ ...cf, host }))
+    (cf.enableIpv6
+      ? <pulumi.Output<string>>endpoint.ipv6Address
+      : endpoint.ipAddress
+    ).apply((host) => client.render(cf, host))
   );
   return {
     clientConfigUrl: bucketOperations.getUrl(configObject.key),

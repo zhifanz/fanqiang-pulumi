@@ -15,11 +15,9 @@ export class AwsEcsFargate extends pulumi.ComponentResource implements Host {
   private readonly service: aws.ecs.Service;
   constructor(
     containerInputs: ContainerInputs,
-    opts?: { logGroup?: aws.cloudwatch.LogGroup; provider?: aws.Provider }
+    logGroup?: aws.cloudwatch.LogGroup
   ) {
-    super("fanqiang:aws:AwsEcsFargate", containerInputs.name, undefined, {
-      providers: opts?.provider && { aws: opts?.provider },
-    });
+    super("fanqiang:aws:AwsEcsFargate", containerInputs.name);
     this.vpc = new Vpc(containerInputs.name, containerInputs.port, this);
     const cluster = new aws.ecs.Cluster(containerInputs.name, undefined, {
       parent: this,
@@ -40,7 +38,7 @@ export class AwsEcsFargate extends pulumi.ComponentResource implements Host {
       containerInputs.name,
       {
         containerDefinitions: pulumi
-          .all([getRegion(), opts?.logGroup?.name])
+          .all([getRegion(), logGroup?.name])
           .apply(([region, logGroup]) =>
             JSON.stringify([container(containerInputs, region, logGroup)])
           ),
@@ -105,13 +103,22 @@ export class AwsEcsFargate extends pulumi.ComponentResource implements Host {
 
   get ipAddress(): pulumi.Output<string> {
     return this.service.id.apply(
-      () =>
-        aws.ec2.getNetworkInterfaceOutput(
-          {
-            filters: [{ name: "vpc-id", values: [this.vpc.vpc.id] }],
-          },
-          { parent: this }
-        ).associations[0].publicIp
+      () => this.getNetworkInterface().associations[0].publicIp
+    );
+  }
+
+  get ipv6Address(): pulumi.Output<string> {
+    return this.service.id.apply(
+      () => this.getNetworkInterface().ipv6Addresses[0]
+    );
+  }
+
+  private getNetworkInterface() {
+    return aws.ec2.getNetworkInterfaceOutput(
+      {
+        filters: [{ name: "vpc-id", values: [this.vpc.vpc.id] }],
+      },
+      { parent: this }
     );
   }
 }
@@ -146,6 +153,7 @@ class Vpc {
     this.vpc = new aws.ec2.Vpc(
       `${name}-fargate-vpc`,
       {
+        assignGeneratedIpv6CidrBlock: true,
         cidrBlock: "192.168.0.0/16",
       },
       { parent }
@@ -155,6 +163,10 @@ class Vpc {
       {
         vpcId: this.vpc.id,
         cidrBlock: `192.168.0.0/24`,
+        ipv6CidrBlock: this.vpc.ipv6CidrBlock.apply(
+          (ip) => ip.substring(0, ip.indexOf("/")) + "/64"
+        ),
+        assignIpv6AddressOnCreation: true
       },
       { parent }
     );
@@ -169,10 +181,17 @@ class Vpc {
             fromPort: port,
             toPort: port,
             cidrBlocks: ["0.0.0.0/0"],
+            ipv6CidrBlocks: ["::/0"],
           },
         ],
         egress: [
-          { fromPort: 0, toPort: 0, protocol: "-1", cidrBlocks: ["0.0.0.0/0"] },
+          {
+            fromPort: 0,
+            toPort: 0,
+            protocol: "-1",
+            cidrBlocks: ["0.0.0.0/0"],
+            ipv6CidrBlocks: ["::/0"],
+          },
         ],
       },
       { parent }
@@ -189,6 +208,15 @@ class Vpc {
       {
         routeTableId: this.vpc.mainRouteTableId,
         destinationCidrBlock: "0.0.0.0/0",
+        gatewayId: gateway.id,
+      },
+      { parent }
+    );
+    new aws.ec2.Route(
+      `${name}-fargate-route-ipv6`,
+      {
+        routeTableId: this.vpc.mainRouteTableId,
+        destinationIpv6CidrBlock: "::/0",
         gatewayId: gateway.id,
       },
       { parent }

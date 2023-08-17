@@ -1,6 +1,4 @@
-import * as aws from "@pulumi/aws";
 import { AwsEcsFargate } from "../aws/AwsEcsFargate";
-import { extractContinent } from "../aws/utils";
 
 export type Encryption =
   | "plain"
@@ -15,26 +13,21 @@ export type ShadowsocksProperties = {
 };
 
 export class ShadowsocksServer extends AwsEcsFargate {
-  constructor(props: ShadowsocksProperties, region?: aws.Region) {
-    super(
-      {
-        name: region
-          ? `shadowsocks-${extractContinent(region)}`
-          : "shadowsocks",
-        image: "ghcr.io/shadowsocks/ssserver-rust:v1.15.2",
-        port: props.port,
-        command: [
-          "ssserver",
-          "--log-without-time",
-          "-s",
-          `[::]:${props.port}`,
-          "-m",
-          props.encryption,
-          "-k",
-          props.password,
-        ],
-      },
-      region && { provider: new aws.Provider(region, { region }) }
-    );
+  constructor(props: ShadowsocksProperties) {
+    super({
+      name: "shadowsocks",
+      image: "ghcr.io/shadowsocks/ssserver-rust:v1.15.2",
+      port: props.port,
+      command: [
+        "ssserver",
+        "--log-without-time",
+        "-s",
+        `[::]:${props.port}`,
+        "-m",
+        props.encryption,
+        "-k",
+        props.password,
+      ],
+    });
   }
 }

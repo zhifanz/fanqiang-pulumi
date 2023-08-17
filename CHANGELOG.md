@@ -1,3 +1,10 @@
+# [2.3.0](https://github.com/zhifanz/fanqiang-pulumi/compare/v2.2.0...v2.3.0) (2023-08-17)
+
+
+### Features
+
+* add ipv6 address to proxy service ([f38d26e](https://github.com/zhifanz/fanqiang-pulumi/commit/f38d26e1eb3997a19cbd1ce106fc72eb4da20cf2))
+
 # [2.2.0](https://github.com/zhifanz/fanqiang-pulumi/compare/v2.1.0...v2.2.0) (2023-07-22)
 
 

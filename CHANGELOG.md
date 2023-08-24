@@ -1,3 +1,10 @@
+# [2.4.0](https://github.com/zhifanz/fanqiang-pulumi/compare/v2.3.0...v2.4.0) (2023-08-24)
+
+
+### Features
+
+* enable ipv6 on alicloud tunnel ([fc4bfff](https://github.com/zhifanz/fanqiang-pulumi/commit/fc4bfff980be14c348746bfad22626a14437f091))
+
 # [2.3.0](https://github.com/zhifanz/fanqiang-pulumi/compare/v2.2.0...v2.3.0) (2023-08-17)
 
 

@@ -10,9 +10,10 @@ import _ from "lodash";
 
 export async function assertConnectSuccess(
   host: string,
-  port: number
+  port: number,
+  timeout = 300 * 1000
 ): Promise<void> {
-  await waitConnectSuccess(host, port, 300 * 1000);
+  await waitConnectSuccess(host, port, timeout);
 }
 
 export async function createStack(
@@ -31,7 +32,7 @@ export async function createStack(
     }
   }
   await stack.workspace.installPlugin("aws", "v5.15.0");
-  await stack.workspace.installPlugin("alicloud", "v3.19.0");
+  await stack.workspace.installPlugin("alicloud", "v3.43.0");
   return stack;
 }
 

@@ -1,15 +1,15 @@
-import { AlicloudEciContainerGroup } from "../alicloud/AlicloudEciContainerGroup";
+import { AlicloudEcsInstance } from "../alicloud/AlicloudEcsInstance";
 import { ServiceEndpoint } from "../domain";
-import * as pulumi from "@pulumi/pulumi";
+import { render } from "../jinja/templates";
 
-export class AlicloudEciSocatTunnel extends AlicloudEciContainerGroup {
+export class AlicloudEciSocatTunnel extends AlicloudEcsInstance {
   constructor(name: string, upstream: ServiceEndpoint) {
-    super(name, upstream.port, {
-      image: "alpine/socat",
-      args: [
-        `TCP4-LISTEN:${upstream.port},fork,reuseaddr`,
-        pulumi.interpolate`TCP4:${upstream.ipAddress}:${upstream.port}`,
-      ],
-    });
+    super(name, upstream.port, userData(upstream));
   }
+}
+
+function userData(upstream: ServiceEndpoint) {
+  return upstream.ipv6Address.apply((remoteHost) =>
+    render("cloud-init.j2", { port: upstream.port, remoteHost })
+  );
 }

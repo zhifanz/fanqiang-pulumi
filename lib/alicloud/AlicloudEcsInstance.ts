@@ -2,19 +2,18 @@ import * as pulumi from "@pulumi/pulumi";
 import * as alicloud from "@pulumi/alicloud";
 import { Host } from "../domain";
 
-export type ContainerInputs = { image: string; args?: pulumi.Input<string>[] };
-
-export class AlicloudEciContainerGroup
+export class AlicloudEcsInstance
   extends pulumi.ComponentResource
   implements Host
 {
   private readonly eip: alicloud.ecs.EipAddress;
-  constructor(name: string, port: number, containerInputs: ContainerInputs) {
+  private readonly ecs: alicloud.ecs.Instance;
+  constructor(name: string, port: number, userData: pulumi.Input<string>) {
     super("fanqiang:alicloud:AlicloudEciContainerGroup", name);
     this.eip = this.elasticIpAddress(name);
     const vpc = new alicloud.vpc.Network(
       name,
-      { cidrBlock: "192.168.0.0/16" },
+      { cidrBlock: "192.168.0.0/16", enableIpv6: true },
       { parent: this }
     );
     const vSwitch = new alicloud.vpc.Switch(
@@ -23,7 +22,14 @@ export class AlicloudEciContainerGroup
         zoneId: availableZones().ids[0],
         vpcId: vpc.id,
         cidrBlock: "192.168.0.0/24",
+        enableIpv6: true,
+        ipv6CidrBlockMask: 12,
       },
+      { parent: this }
+    );
+    const ipv6Gateway = new alicloud.vpc.Ipv6Gateway(
+      name,
+      { vpcId: vpc.id },
       { parent: this }
     );
     const securityGroup = new alicloud.ecs.SecurityGroup(
@@ -34,7 +40,7 @@ export class AlicloudEciContainerGroup
       { parent: this }
     );
     new alicloud.ecs.SecurityGroupRule(
-      name,
+      `${name}-ipv4`,
       {
         securityGroupId: securityGroup.id,
         ipProtocol: "tcp",
@@ -44,24 +50,50 @@ export class AlicloudEciContainerGroup
       },
       { parent: this }
     );
-    new alicloud.eci.ContainerGroup(
+    new alicloud.ecs.SecurityGroupRule(
+      `${name}-ipv6`,
+      {
+        securityGroupId: securityGroup.id,
+        ipProtocol: "tcp",
+        type: "ingress",
+        ipv6CidrIp: "::/0",
+        portRange: `${port}/${port}`,
+      },
+      { parent: this }
+    );
+
+    this.ecs = new alicloud.ecs.Instance(
       name,
       {
-        containerGroupName: name,
-        containers: [
-          {
-            image: containerInputs.image,
-            name: name,
-            args: containerInputs.args,
-            ports: [{ port: port, protocol: "TCP" }],
-          },
-        ],
-        securityGroupId: securityGroup.id,
+        imageId: "aliyun_2_1903_x64_20G_alibase_20210726.vhd",
+        instanceType: "ecs.t5-lc2m1.nano",
+        securityGroups: [securityGroup.id],
+        instanceChargeType: "PostPaid",
         vswitchId: vSwitch.id,
-        cpu: 2,
-        memory: 1,
-        restartPolicy: "Always",
-        eipInstanceId: this.eip.id,
+        spotStrategy: "SpotAsPriceGo",
+        systemDiskCategory: "cloud_efficiency",
+        systemDiskSize: 40,
+        userData: pulumi
+          .output(userData)
+          .apply((script) => Buffer.from(script).toString("base64")),
+        ipv6AddressCount: 1,
+      },
+      { parent: this }
+    );
+    new alicloud.ecs.EipAssociation(name, {
+      allocationId: this.eip.id,
+      instanceId: this.ecs.id,
+    });
+    new alicloud.vpc.Ipv6InternetBandwidth(
+      name,
+      {
+        bandwidth: 480,
+        ipv6AddressId: alicloud.vpc.getIpv6AddressesOutput({
+          associatedInstanceId: this.ecs.id,
+          vpcId: vpc.id,
+        }).ids[0],
+        ipv6GatewayId: ipv6Gateway.id,
+        internetChargeType: "PayByTraffic",
       },
       { parent: this }
     );
@@ -69,6 +101,10 @@ export class AlicloudEciContainerGroup
 
   get ipAddress(): pulumi.Output<string> {
     return this.eip.ipAddress;
+  }
+
+  get ipv6Address(): pulumi.Output<string> {
+    return this.ecs.ipv6Addresses[0];
   }
 
   private elasticIpAddress(name: string): alicloud.ecs.EipAddress {

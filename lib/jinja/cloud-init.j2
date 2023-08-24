@@ -1,0 +1,21 @@
+#!/bin/bash
+
+until ping -c1 aliyun.com &>/dev/null ; do sleep 1 ; done
+install_dir=/usr/sbin
+install_path="$install_dir"/ecs-utils-ipv6
+if [ ! -f "$install_path" ]; then
+    tool_url="http://ecs-image-utils.oss-cn-hangzhou.aliyuncs.com/ipv6/rhel/ecs-utils-ipv6"
+    # download the tool
+    if ! wget "$tool_url" -O "$install_path"; then
+        echo "[Error] download tool failed, code $?"
+        exit "$?"
+    fi
+fi
+# chmod the tool
+if ! chmod +x "$install_path"; then
+    echo "[Error] chmod tool failed, code $?"
+    exit "$?"
+fi
+# run the tool
+"$install_path"
+socat TCP4-LISTEN:{{ port }},fork,reuseaddr TCP6:[{{ remoteHost }}]:{{ port }} &

@@ -1,7 +1,7 @@
 import { assertConnectSuccess, pulumiit } from "../helper";
 import { ShadowsocksServer } from "../../lib/proxy/ShadowsocksServer";
 
-describe("proxy", () => {
+describe("ShadowsocksServer", () => {
   describe("shadowsocks", () => {
     pulumiit(
       "checking proxy port open",

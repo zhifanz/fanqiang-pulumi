@@ -1,0 +1,19 @@
+#!/bin/bash
+
+until ping -c1 aws.amazon.com &>/dev/null ; do sleep 1 ; done
+yum update -y
+curl -fsSL https://get.vpnsetup.net | sh
+cat > /root/Windows-Client-Guide.txt <<EOF
+## Inputs for client script:
+VPN Client Name: vpnclient
+Server IP Address: $(curl --silent http://169.254.169.254/latest/meta-data/public-ipv4)
+## Run below command in Powershell with administrator access
+Invoke-WebRequest -Uri https://github.com/hwdsl2/vpn-extras/releases/latest/download/ikev2_config_import.cmd -OutFile ikev2_config_import.cmd
+.\ikev2_config_import.cmd
+EOF
+
+zip -m /root/vpnclient.zip /root/Windows-Client-Guide.txt /root/vpnclient.p12
+aws s3 cp /root/vpnclient.zip s3://{{ bucket }}/{{ Windows }}
+aws s3 cp /root/vpnclient.mobileconfig s3://{{ bucket }}/{{ Apple }}
+aws s3 cp /root/vpnclient.sswan s3://{{ bucket }}/{{ Android }}
+

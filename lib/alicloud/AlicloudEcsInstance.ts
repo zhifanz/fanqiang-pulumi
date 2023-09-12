@@ -9,7 +9,7 @@ export class AlicloudEcsInstance
   private readonly eip: alicloud.ecs.EipAddress;
   private readonly ecs: alicloud.ecs.Instance;
   constructor(name: string, port: number, userData: pulumi.Input<string>) {
-    super("fanqiang:alicloud:AlicloudEciContainerGroup", name);
+    super("fanqiang:alicloud:AlicloudEcsInstance", name);
     this.eip = this.elasticIpAddress(name);
     const vpc = new alicloud.vpc.Network(
       name,

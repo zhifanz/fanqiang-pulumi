@@ -6,5 +6,5 @@ config:
   bucket: fanqiang
   encryption: aes-256-gcm
   port: 8388
-  scale: minimal
   alicloud:region: cn-shanghai
+  mode: tunnelproxy

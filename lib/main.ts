@@ -9,11 +9,12 @@ import {
 import * as client from "./client/configuration";
 import { AlicloudEciSocatTunnel } from "./forwardtunnel/AlicloudEciSocatTunnel";
 import { Host } from "./domain";
+import { LibreswanVpnServer } from "./proxy/LibreswanVpnServer";
 
 type Configuration = ShadowsocksProperties & {
   bucket: string;
   requireTunnel: boolean;
-  enableIpv6: boolean;
+  mode: "vpn" | "tunnelproxy";
 };
 
 function loadConfiguration(): Configuration {
@@ -24,7 +25,7 @@ function loadConfiguration(): Configuration {
     port: stackConfig.requireNumber("port"),
     bucket: process.env.FANQIANG_BUCKET || stackConfig.require("bucket"),
     requireTunnel: requireTunnel(stackConfig),
-    enableIpv6: !!stackConfig.getBoolean("enableIpv6"),
+    mode: stackConfig.require("mode"),
   };
 }
 
@@ -45,22 +46,24 @@ function parsePassword(config: pulumi.Config) {
 export async function apply() {
   const cf = loadConfiguration();
   const bucketOperations = new BucketOperations(cf.bucket);
-  let endpoint: Host = new ShadowsocksServer(cf);
-  if (cf.requireTunnel) {
-    endpoint = new AlicloudEciSocatTunnel("socat-tunnel", {
-      ipAddress: endpoint.ipAddress,
-      ipv6Address: endpoint.ipv6Address,
-      port: cf.port,
-    });
+  if (cf.mode == "vpn") {
+    const vpnServer = new LibreswanVpnServer(bucketOperations);
+    return vpnServer.clientConfigurations;
+  } else {
+    let endpoint: Host = new ShadowsocksServer(cf);
+    if (cf.requireTunnel) {
+      endpoint = new AlicloudEciSocatTunnel("socat-tunnel", {
+        ipAddress: endpoint.ipAddress,
+        ipv6Address: endpoint.ipv6Address,
+        port: cf.port,
+      });
+    }
+    const configObject = bucketOperations.uploadContent(
+      "clash/config.yaml",
+      endpoint.ipAddress.apply((host) => client.render(cf, host))
+    );
+    return {
+      clientConfigUrl: bucketOperations.getUrl(configObject.key),
+    };
   }
-  const configObject = bucketOperations.uploadContent(
-    "clash/config.yaml",
-    (cf.enableIpv6
-      ? <pulumi.Output<string>>endpoint.ipv6Address
-      : endpoint.ipAddress
-    ).apply((host) => client.render(cf, host))
-  );
-  return {
-    clientConfigUrl: bucketOperations.getUrl(configObject.key),
-  };
 }

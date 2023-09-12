@@ -1,3 +1,10 @@
+# [2.5.0](https://github.com/zhifanz/fanqiang-pulumi/compare/v2.4.0...v2.5.0) (2023-09-12)
+
+
+### Features
+
+* add support for libreswan vpn server ([17e4d46](https://github.com/zhifanz/fanqiang-pulumi/commit/17e4d46d93322c926f306492a2b9f84431dc985a))
+
 # [2.4.0](https://github.com/zhifanz/fanqiang-pulumi/compare/v2.3.0...v2.4.0) (2023-08-24)
 
 

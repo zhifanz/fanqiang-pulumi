@@ -10,6 +10,8 @@ export type ContainerInputs = {
   command: string[];
 };
 
+const TaskSize = { cpu: 256, memory: 512 } as const;
+
 export class AwsEcsFargate extends pulumi.ComponentResource implements Host {
   private readonly vpc: Vpc;
   private readonly service: aws.ecs.Service;
@@ -26,9 +28,9 @@ export class AwsEcsFargate extends pulumi.ComponentResource implements Host {
       containerInputs.name,
       {
         clusterName: cluster.name,
-        capacityProviders: ["FARGATE_SPOT"],
+        capacityProviders: ["FARGATE"],
         defaultCapacityProviderStrategies: [
-          { capacityProvider: "FARGATE_SPOT", base: 1, weight: 1 },
+          { capacityProvider: "FARGATE", base: 1, weight: 1 },
         ],
       },
       { parent: this }
@@ -45,8 +47,8 @@ export class AwsEcsFargate extends pulumi.ComponentResource implements Host {
         executionRoleArn: this.executionRole(containerInputs.name).arn,
         family: containerInputs.name,
         networkMode: "awsvpc",
-        cpu: "256",
-        memory: "512",
+        cpu: TaskSize.cpu.toString(),
+        memory: TaskSize.memory.toString(),
         requiresCompatibilities: ["FARGATE"],
         runtimePlatform: {
           operatingSystemFamily: "LINUX",
@@ -125,11 +127,18 @@ export class AwsEcsFargate extends pulumi.ComponentResource implements Host {
 
 function container(inputs: ContainerInputs, region: string, logGroup?: string) {
   const result: any = {
-    name: inputs.name,
-    image: inputs.image,
-    portMappings: [{ containerPort: inputs.port, hostPort: inputs.port }],
-    essential: true,
     command: inputs.command,
+    cpu: TaskSize.cpu,
+    environment: [],
+    essential: true,
+    image: inputs.image,
+    memory: TaskSize.memory,
+    mountPoints: [],
+    name: inputs.name,
+    portMappings: [
+      { containerPort: inputs.port, hostPort: inputs.port, protocol: "tcp" },
+    ],
+    volumesFrom: [],
   };
   if (logGroup) {
     result.logConfiguration = {
@@ -166,7 +175,7 @@ class Vpc {
         ipv6CidrBlock: this.vpc.ipv6CidrBlock.apply(
           (ip) => ip.substring(0, ip.indexOf("/")) + "/64"
         ),
-        assignIpv6AddressOnCreation: true
+        assignIpv6AddressOnCreation: true,
       },
       { parent }
     );

@@ -15,6 +15,9 @@
     "lib"
   ],
   "dependencies": {
+    "@alicloud/eci20180808": "^2.0.3",
+    "@alicloud/openapi-client": "^0.4.8",
+    "@alicloud/vpc20160428": "^6.3.2",
     "@pulumi/alicloud": "^3.43.0",
     "@pulumi/aws": "^5.15.0",
     "@pulumi/command": "^0.6.0",

@@ -1,15 +1,51 @@
-import { AlicloudEcsInstance } from "../alicloud/AlicloudEcsInstance";
+import { interpolate } from "@pulumi/pulumi";
 import { ServiceEndpoint } from "../domain";
-import { render } from "../jinja/templates";
+import {
+  AlicloudTunnelServiceSupport,
+  currentRegion,
+} from "../alicloud/AlicloudTunnelServiceSupport";
+import { AlicloudEciContainerGroup } from "../alicloud/AlicloudEciContainerGroup";
 
-export class AlicloudEciSocatTunnel extends AlicloudEcsInstance {
-  constructor(name: string, upstream: ServiceEndpoint) {
-    super(name, upstream.port, userData(upstream));
+export class AlicloudEciSocatTunnel
+  extends AlicloudTunnelServiceSupport
+  implements ServiceEndpoint
+{
+  static async newInstanceWithCurrentRegion(
+    name: string,
+    upstream: ServiceEndpoint
+  ): Promise<AlicloudEciSocatTunnel> {
+    return new AlicloudEciSocatTunnel(await currentRegion(), name, upstream);
   }
-}
 
-function userData(upstream: ServiceEndpoint) {
-  return upstream.ipv6Address.apply((remoteHost) =>
-    render("cloud-init.j2", { port: upstream.port, remoteHost })
-  );
+  constructor(regionId: string, name: string, upstream: ServiceEndpoint) {
+    super("fanqiang:alicloud:AlicloudEciSocatTunnel", name, upstream.port);
+    new AlicloudEciContainerGroup(
+      regionId,
+      name,
+      {
+        securityGroupId: this.securityGroup.id,
+        vSwitchId: this.vSwitch.id,
+        containerGroupName: "socat-tunnel",
+        eipInstanceId: this.eip.id,
+        cpu: 1,
+        memory: 2,
+        container: {
+          name: "socat",
+          image: "alpine/socat",
+          command: [
+            "-d",
+            "-d",
+            "-d",
+            "-D",
+            `TCP4-LISTEN:${upstream.port},fork,reuseaddr`,
+            upstream.ipv6Address
+              ? interpolate`TCP6:[${upstream.ipv6Address}]:${upstream.port}`
+              : interpolate`TCP:${upstream.ipAddress}:${upstream.port}`,
+          ],
+          port: upstream.port,
+        },
+      },
+      { parent: this }
+    );
+  }
 }

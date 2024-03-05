@@ -8,13 +8,15 @@ import {
 } from "./proxy/ShadowsocksServer";
 import * as client from "./client/configuration";
 import { AlicloudEciSocatTunnel } from "./forwardtunnel/AlicloudEciSocatTunnel";
-import { Host } from "./domain";
+import { Host, ServiceEndpoint } from "./domain";
 import { LibreswanVpnServer } from "./proxy/LibreswanVpnServer";
+import { AlicloudEcsSocatTunnel } from "./forwardtunnel/AlicloudEcsSocatTunnel";
+import { currentRegion } from "./alicloud/AlicloudTunnelServiceSupport";
 
 type Configuration = ShadowsocksProperties & {
   bucket: string;
-  requireTunnel: boolean;
   mode: "vpn" | "tunnelproxy";
+  tunnelType?: "spot" | "stable";
 };
 
 function loadConfiguration(): Configuration {
@@ -24,19 +26,9 @@ function loadConfiguration(): Configuration {
     password: process.env.FANQIANG_PASSWORD || parsePassword(stackConfig),
     port: stackConfig.requireNumber("port"),
     bucket: process.env.FANQIANG_BUCKET || stackConfig.require("bucket"),
-    requireTunnel: requireTunnel(stackConfig),
     mode: stackConfig.require("mode"),
+    tunnelType: stackConfig.get("tunnelType"),
   };
-}
-
-function requireTunnel(config: pulumi.Config) {
-  if (process.env.FANQIANG_REQUIRE_TUNNEL == "true") {
-    return true;
-  }
-  if (process.env.FANQIANG_REQUIRE_TUNNEL == "false") {
-    return false;
-  }
-  return config.requireBoolean("requireTunnel");
 }
 
 function parsePassword(config: pulumi.Config) {
@@ -51,12 +43,21 @@ export async function apply() {
     return vpnServer.clientConfigurations;
   } else {
     let endpoint: Host = new ShadowsocksServer(cf);
-    if (cf.requireTunnel) {
-      endpoint = new AlicloudEciSocatTunnel("socat-tunnel", {
+    if (cf.tunnelType) {
+      const upstream: ServiceEndpoint = {
         ipAddress: endpoint.ipAddress,
         ipv6Address: endpoint.ipv6Address,
         port: cf.port,
-      });
+      };
+      if (cf.tunnelType == "stable") {
+        endpoint = new AlicloudEciSocatTunnel(
+          await currentRegion(),
+          "socat-tunnel",
+          upstream
+        );
+      } else {
+        endpoint = new AlicloudEcsSocatTunnel("socat-tunnel", upstream);
+      }
     }
     const configObject = bucketOperations.uploadContent(
       "clash/config.yaml",

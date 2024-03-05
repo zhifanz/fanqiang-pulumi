@@ -1,10 +1,8 @@
-import {
-  AlicloudEcsInstance,
-  availableZones,
-} from "../../lib/alicloud/AlicloudEcsInstance";
+import { AlicloudEcsInstance } from "../../lib/alicloud/AlicloudEcsInstance";
 import { pulumiit } from "../helper";
 import assert from "node:assert";
 import * as alicloud from "@pulumi/alicloud";
+import { availableZones } from "../../lib/alicloud/AlicloudTunnelServiceSupport";
 
 describe("AlicloudEciContainerGroup", () => {
   pulumiit(

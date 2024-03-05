@@ -1,3 +1,10 @@
+## [2.5.1](https://github.com/zhifanz/fanqiang-pulumi/compare/v2.5.0...v2.5.1) (2024-01-14)
+
+
+### Bug Fixes
+
+* make proxy stable by using aws fargate instead of fargate_spot ([f97f5b3](https://github.com/zhifanz/fanqiang-pulumi/commit/f97f5b38238e100720c9a1f2ef31993fcdba08c3))
+
 # [2.5.0](https://github.com/zhifanz/fanqiang-pulumi/compare/v2.4.0...v2.5.0) (2023-09-12)
 
 

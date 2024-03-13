@@ -3,19 +3,23 @@ import * as aws from "@pulumi/aws";
 import * as path from "node:path";
 import { DEFAULT_RESOURCE_NAME } from "../utils";
 
+const defaultRegionProvider = {
+  provider: new aws.Provider("defaultRegion", {
+    region: "us-east-1",
+  }),
+};
+
 export class BucketOperations {
-  private readonly bucket: aws.s3.Bucket;
+  private readonly bucket: aws.s3.BucketV2;
   constructor(readonly bucketName: string) {
-    this.bucket = new aws.s3.Bucket(DEFAULT_RESOURCE_NAME, {
-      forceDestroy: true,
-      bucket: bucketName,
-      serverSideEncryptionConfiguration: {
-        rule: {
-          bucketKeyEnabled: false,
-          applyServerSideEncryptionByDefault: { sseAlgorithm: "AES256" },
-        },
+    this.bucket = new aws.s3.BucketV2(
+      DEFAULT_RESOURCE_NAME,
+      {
+        forceDestroy: true,
+        bucket: bucketName,
       },
-    });
+      defaultRegionProvider
+    );
     new aws.s3.BucketPolicy(
       DEFAULT_RESOURCE_NAME,
       {
@@ -35,9 +39,14 @@ export class BucketOperations {
         ),
       },
       {
-        dependsOn: new aws.s3.BucketPublicAccessBlock(DEFAULT_RESOURCE_NAME, {
-          bucket: this.bucket.id,
-        }),
+        dependsOn: new aws.s3.BucketPublicAccessBlock(
+          DEFAULT_RESOURCE_NAME,
+          {
+            bucket: this.bucket.id,
+          },
+          defaultRegionProvider
+        ),
+        ...defaultRegionProvider,
       }
     );
   }
@@ -70,7 +79,7 @@ export class BucketOperations {
         key,
         content,
       },
-      parent && { parent }
+      { ...defaultRegionProvider, parent }
     );
   }
 }

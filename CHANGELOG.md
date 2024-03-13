@@ -1,3 +1,10 @@
+## [2.6.1](https://github.com/zhifanz/fanqiang-pulumi/compare/v2.6.0...v2.6.1) (2024-03-13)
+
+
+### Bug Fixes
+
+* cloudinit will fail if ipv6util script does not reboot the ecs instance ([2a41e06](https://github.com/zhifanz/fanqiang-pulumi/commit/2a41e06e3568bb673fbe229434404b2546db292e))
+
 # [2.6.0](https://github.com/zhifanz/fanqiang-pulumi/compare/v2.5.1...v2.6.0) (2024-03-05)
 
 

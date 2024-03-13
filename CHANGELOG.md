@@ -1,3 +1,10 @@
+# [2.6.0](https://github.com/zhifanz/fanqiang-pulumi/compare/v2.5.1...v2.6.0) (2024-03-05)
+
+
+### Features
+
+* aliyun tunnel type support eci ([7355267](https://github.com/zhifanz/fanqiang-pulumi/commit/73552675532ad817e4e1f64f58612eb871c21a03))
+
 ## [2.5.1](https://github.com/zhifanz/fanqiang-pulumi/compare/v2.5.0...v2.5.1) (2024-01-14)
 
 

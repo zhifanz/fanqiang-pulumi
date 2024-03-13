@@ -16,7 +16,7 @@ import { currentRegion } from "./alicloud/AlicloudTunnelServiceSupport";
 type Configuration = ShadowsocksProperties & {
   bucket: string;
   mode: "vpn" | "tunnelproxy";
-  tunnelType?: "spot" | "stable";
+  tunnelType?: "ecs" | "eci";
 };
 
 function loadConfiguration(): Configuration {
@@ -49,7 +49,7 @@ export async function apply() {
         ipv6Address: endpoint.ipv6Address,
         port: cf.port,
       };
-      if (cf.tunnelType == "stable") {
+      if (cf.tunnelType == "eci") {
         endpoint = new AlicloudEciSocatTunnel(
           await currentRegion(),
           "socat-tunnel",

@@ -17,5 +17,5 @@ if ! chmod +x "$install_path"; then
     exit "$?"
 fi
 # run the tool
-"$install_path"
-socat TCP4-LISTEN:{{ port }},fork,reuseaddr TCP6:[{{ remoteHost }}]:{{ port }} &
+"$install_path" || true
+socat TCP4-LISTEN:{{ port }},fork,reuseaddr TCP:{{ remoteHost }}:{{ port }} &

@@ -8,7 +8,12 @@ export class AlicloudEcsInstance
   implements Host
 {
   private readonly ecs: alicloud.ecs.Instance;
-  constructor(name: string, port: number, userData: pulumi.Input<string>) {
+  constructor(
+    name: string,
+    port: number,
+    userData: pulumi.Input<string>,
+    password?: string
+  ) {
     super("fanqiang:alicloud:AlicloudEcsInstance", name, port);
     this.ecs = new alicloud.ecs.Instance(
       name,
@@ -18,9 +23,9 @@ export class AlicloudEcsInstance
         securityGroups: [this.securityGroup.id],
         instanceChargeType: "PostPaid",
         vswitchId: this.vSwitch.id,
-        spotStrategy: "SpotAsPriceGo",
         systemDiskCategory: "cloud_efficiency",
         systemDiskSize: 40,
+        password,
         userData: pulumi
           .output(userData)
           .apply((script) => Buffer.from(script).toString("base64")),
@@ -28,11 +33,36 @@ export class AlicloudEcsInstance
       },
       { parent: this }
     );
+    if (password && port != 22) {
+      new alicloud.ecs.SecurityGroupRule(
+        `${name}-ssh`,
+        {
+          securityGroupId: this.securityGroup.id,
+          ipProtocol: "tcp",
+          type: "ingress",
+          cidrIp: "0.0.0.0/0",
+          portRange: "22/22",
+        },
+        { parent: this }
+      );
+    }
     new alicloud.ecs.EipAssociation(name, {
       allocationId: this.eip.id,
       instanceId: this.ecs.id,
     });
-    super.configIpv6InternetBandwidth(name, this.ecs, this.ecs.id);
+    new alicloud.vpc.Ipv6InternetBandwidth(
+      name,
+      {
+        bandwidth: 480,
+        ipv6AddressId: alicloud.vpc.getIpv6AddressesOutput({
+          associatedInstanceId: this.ecs.id,
+          vpcId: this.vpc.id,
+        }).ids[0],
+        ipv6GatewayId: this.ipv6Gateway.id,
+        internetChargeType: "PayByTraffic",
+      },
+      { parent: this }
+    );
   }
 
   get ipAddress(): pulumi.Output<string> {

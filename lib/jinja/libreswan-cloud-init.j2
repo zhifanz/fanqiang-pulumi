@@ -1,4 +1,4 @@
-#!/bin/bash
+{% if shebang %}#!/bin/bash{% endif %}
 
 until ping -c1 aws.amazon.com &>/dev/null ; do sleep 1 ; done
 yum update -y
@@ -12,8 +12,12 @@ Invoke-WebRequest -Uri https://github.com/hwdsl2/vpn-extras/releases/latest/down
 .\ikev2_config_import.cmd
 EOF
 
+{% if credential %}
+aws configure set aws_access_key_id "{{ credential.id }}"
+aws configure set aws_secret_access_key "{{ credential.secret }}"
+{% endif %}
+
 zip -m /root/vpnclient.zip /root/Windows-Client-Guide.txt /root/vpnclient.p12
 aws s3 cp /root/vpnclient.zip s3://{{ bucket }}/{{ Windows }}
 aws s3 cp /root/vpnclient.mobileconfig s3://{{ bucket }}/{{ Apple }}
 aws s3 cp /root/vpnclient.sswan s3://{{ bucket }}/{{ Android }}
-

@@ -1,8 +1,8 @@
 import { pulumiit } from "../helper";
-import { determineAmi } from "../../lib/proxy/LibreswanVpnServer";
+import { determineAmi } from "../../lib/proxy/AwsEc2LibreswanVpnServer";
 import { assert } from "chai";
 
-describe("LibreswanVpnServer", () => {
+describe("AwsEc2LibreswanVpnServer", () => {
   pulumiit(
     "determineAmi return Amazon Linux 2 kernel",
     async () => {

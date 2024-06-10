@@ -3,23 +3,24 @@ import { BucketOperations } from "../aws/BucketOperations";
 import { render } from "../jinja/templates";
 import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
+import {
+  VpnServer,
+  s3ClientConfigurations,
+  VpnClientConfigurations,
+  S3_CONFIG_PATH,
+} from "./VpnServer";
 
-const S3_CONFIG_PATH = {
-  Apple: "vpn/client.mobileconfig",
-  Android: "vpn/client.sswan",
-  Windows: "vpn/client.zip",
-};
-type VpnClientConfigurations = Record<
-  keyof typeof S3_CONFIG_PATH,
-  pulumi.Output<string>
->;
-
-export class LibreswanVpnServer extends AwsEc2Instance {
+export class AwsEc2LibreswanVpnServer
+  extends AwsEc2Instance
+  implements VpnServer
+{
   constructor(private readonly bucket: BucketOperations) {
     super(
       "libreswan",
       pulumi.output(determineAmi()).imageId,
       render("libreswan-cloud-init.j2", {
+        shebang: true,
+        cwd: "/root",
         bucket: bucket.bucketName,
         ...S3_CONFIG_PATH,
       })
@@ -27,11 +28,7 @@ export class LibreswanVpnServer extends AwsEc2Instance {
   }
 
   get clientConfigurations(): VpnClientConfigurations {
-    return {
-      Apple: this.bucket.getUrl(S3_CONFIG_PATH.Apple),
-      Android: this.bucket.getUrl(S3_CONFIG_PATH.Android),
-      Windows: this.bucket.getUrl(S3_CONFIG_PATH.Windows),
-    };
+    return s3ClientConfigurations(this.bucket);
   }
 }
 

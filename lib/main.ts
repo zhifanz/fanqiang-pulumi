@@ -9,9 +9,9 @@ import {
 import * as client from "./client/configuration";
 import { AlicloudEciSocatTunnel } from "./forwardtunnel/AlicloudEciSocatTunnel";
 import { Host, ServiceEndpoint } from "./domain";
-import { LibreswanVpnServer } from "./proxy/LibreswanVpnServer";
 import { AlicloudEcsSocatTunnel } from "./forwardtunnel/AlicloudEcsSocatTunnel";
 import { currentRegion } from "./alicloud/AlicloudTunnelServiceSupport";
+import { create as createVpnServer } from "./proxy/AwsLightsailLibreswanVpnServer";
 
 type Configuration = ShadowsocksProperties & {
   bucket: string;
@@ -39,7 +39,7 @@ export async function apply() {
   const cf = loadConfiguration();
   const bucketOperations = new BucketOperations(cf.bucket);
   if (cf.mode == "vpn") {
-    const vpnServer = new LibreswanVpnServer(bucketOperations);
+    const vpnServer = createVpnServer(bucketOperations);
     return vpnServer.clientConfigurations;
   } else {
     let endpoint: Host = new ShadowsocksServer(cf);

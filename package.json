@@ -19,7 +19,7 @@
     "@alicloud/openapi-client": "^0.4.8",
     "@alicloud/vpc20160428": "^6.3.2",
     "@pulumi/alicloud": "^3.43.0",
-    "@pulumi/aws": "^5.15.0",
+    "@pulumi/aws": "^6.40.0",
     "@pulumi/command": "^0.6.0",
     "@pulumi/pulumi": "^3.0.0",
     "lodash": "^4.17.21",

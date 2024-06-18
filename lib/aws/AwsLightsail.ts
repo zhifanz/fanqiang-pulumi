@@ -33,11 +33,10 @@ export class AwsLightsail
             protocol: "all",
             fromPort: 0,
             toPort: 65535,
-            cidrs: ["0.0.0.0/0"],
           },
         ],
       },
-      { parent: this }
+      { parent: this, ignoreChanges: ["portInfos"] }
     );
     this.ipAddress = instance.publicIpAddress;
     this.ipv6Address = instance.ipv6Addresses[0];

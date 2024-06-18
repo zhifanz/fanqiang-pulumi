@@ -15,7 +15,7 @@ import { create as createVpnServer } from "./proxy/AwsLightsailLibreswanVpnServe
 
 type Configuration = ShadowsocksProperties & {
   bucket: string;
-  mode: "vpn" | "tunnelproxy";
+  mode: "vpn" | "tunnelproxy" | "dual";
   tunnelType?: "ecs" | "eci";
 };
 
@@ -38,10 +38,14 @@ function parsePassword(config: pulumi.Config) {
 export async function apply() {
   const cf = loadConfiguration();
   const bucketOperations = new BucketOperations(cf.bucket);
-  if (cf.mode == "vpn") {
+  const result: any = {};
+  if (cf.mode == "vpn" || cf.mode == "dual") {
     const vpnServer = createVpnServer(bucketOperations);
-    return vpnServer.clientConfigurations;
-  } else {
+    result.vpnApple = vpnServer.clientConfigurations.Apple;
+    result.vpnAndroid = vpnServer.clientConfigurations.Android;
+    result.vpnWindows = vpnServer.clientConfigurations.Windows;
+  }
+  if (cf.mode == "tunnelproxy" || cf.mode == "dual") {
     let endpoint: Host = new ShadowsocksServer(cf);
     if (cf.tunnelType) {
       const upstream: ServiceEndpoint = {
@@ -63,8 +67,7 @@ export async function apply() {
       "clash/config.yaml",
       endpoint.ipAddress.apply((host) => client.render(cf, host))
     );
-    return {
-      clientConfigUrl: bucketOperations.getUrl(configObject.key),
-    };
+    result.tunnelProxy = bucketOperations.getUrl(configObject.key);
   }
+  return result;
 }

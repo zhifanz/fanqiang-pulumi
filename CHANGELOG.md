@@ -1,3 +1,10 @@
+# [2.8.0](https://github.com/zhifanz/fanqiang-pulumi/compare/v2.7.0...v2.8.0) (2024-06-18)
+
+
+### Features
+
+* allow both vpn and tunnelproxy mode ([80f9c9a](https://github.com/zhifanz/fanqiang-pulumi/commit/80f9c9ac77a05a03c818d7f9e946be64d0cde345))
+
 # [2.7.0](https://github.com/zhifanz/fanqiang-pulumi/compare/v2.6.1...v2.7.0) (2024-06-10)
 
 

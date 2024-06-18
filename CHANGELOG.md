@@ -1,3 +1,10 @@
+# [2.7.0](https://github.com/zhifanz/fanqiang-pulumi/compare/v2.6.1...v2.7.0) (2024-06-10)
+
+
+### Features
+
+* vpn server use lightsail instead of ec2 ([5abfb28](https://github.com/zhifanz/fanqiang-pulumi/commit/5abfb285df6dacb3033f849d40c855631348cc2e))
+
 ## [2.6.1](https://github.com/zhifanz/fanqiang-pulumi/compare/v2.6.0...v2.6.1) (2024-03-13)
 
 
